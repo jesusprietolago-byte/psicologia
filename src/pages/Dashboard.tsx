@@ -12,7 +12,7 @@ import AvailabilityManager from '@/components/AvailabilityManager';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Dashboard = () => {
-  const { role, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const [admissionStatus, setAdmissionStatus] = useState<string | null>(null);
   const [nextAppointment, setNextAppointment] = useState<any>(null);
 
