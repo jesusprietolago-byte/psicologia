@@ -6,30 +6,36 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { Leaf, ArrowLeft, Sparkles } from 'lucide-react';
 
 const Login = () => {
   const { user, role } = useAuth();
+  const navigate = useNavigate();
   const [view, setView] = useState<"sign_in" | "sign_up" | "forgotten_password" | "update_password">("sign_in");
 
   useEffect(() => {
-    // Detectar si el usuario viene de un enlace de recuperación o invitación
+    // 1. Detectar si venimos de un enlace de invitación o recuperación por el HASH de la URL
     const hash = window.location.hash;
-    if (hash && (hash.includes("type=recovery") || hash.includes("type=invite"))) {
+    if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token="))) {
       setView("update_password");
     }
 
+    // 2. Escuchar cambios de estado de autenticación (por si el hash se procesa internamente)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setView("update_password");
       }
+      if (event === "SIGNED_IN" && view !== "update_password") {
+        // Si se loguea normalmente, redirigir según rol
+        // El AuthContext ya maneja la carga del rol, así que dejamos que el renderizado principal lo haga
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [view]);
 
-  // Si el usuario ya está logueado y NO está actualizando contraseña, redirigir
+  // Si el usuario ya está logueado y NO estamos en vista de actualizar contraseña, redirigir
   if (user && view !== "update_password") {
     return <Navigate to={role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
@@ -88,10 +94,17 @@ const Login = () => {
                   email_label: 'Correo electrónico',
                   password_label: 'Contraseña',
                   button_label: 'Iniciar sesión',
+                  link_text: '¿Ya tienes cuenta? Inicia sesión',
                 },
                 update_password: {
                   password_label: 'Nueva contraseña',
-                  button_label: 'Guardar contraseña y entrar',
+                  password_input_placeholder: 'Mínimo 6 caracteres',
+                  button_label: 'Activar mi cuenta y entrar',
+                },
+                forgotten_password: {
+                  email_label: 'Correo electrónico',
+                  button_label: 'Enviar instrucciones',
+                  link_text: '¿Olvidaste tu contraseña?',
                 }
               }
             }}
