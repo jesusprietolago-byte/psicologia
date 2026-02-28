@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Session from "./pages/Session";
+import AdmissionForm from "./pages/AdmissionForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +30,12 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRole="patient">
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/admission" element={
+              <ProtectedRoute allowedRole="patient">
+                <AdmissionForm />
               </ProtectedRoute>
             } />
 

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { LogOut, Calendar, Video, FileText, ClipboardList } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { Link } from 'react-router-dom';
 
 const Dashboard = () => {
   const { user, signOut } = useAuth();
@@ -18,7 +19,9 @@ const Dashboard = () => {
         .from('admissions')
         .select('status')
         .eq('patient_id', user.id)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       setAdmissionStatus(data?.status || 'NOT_STARTED');
     };
     checkAdmission();
@@ -34,7 +37,6 @@ const Dashboard = () => {
       </nav>
 
       <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Estado de Admisión */}
         <Card className="md:col-span-3 border-none shadow-sm bg-white">
           <CardHeader>
             <CardTitle className="text-lg flex items-center">
@@ -45,11 +47,14 @@ const Dashboard = () => {
             {admissionStatus === 'NOT_STARTED' && (
               <div className="flex flex-col items-center py-8 text-center">
                 <p className="text-slate-600 mb-4">Para comenzar tu terapia, necesitamos conocerte un poco mejor.</p>
-                <Button className="bg-sky-500 hover:bg-sky-600">Completar Formulario de Admisión</Button>
+                <Button asChild className="bg-sky-500 hover:bg-sky-600">
+                  <Link to="/admission">Completar Formulario de Admisión</Link>
+                </Button>
               </div>
             )}
             {admissionStatus === 'PENDING_APPROVAL' && (
-              <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg text-amber-800">
+              <div className="bg-amber-50 border border-amber-100 p-4 rounded-lg text-amber-800 flex items-center">
+                <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse mr-3" />
                 Tu solicitud está siendo revisada por la psicóloga. Te avisaremos pronto.
               </div>
             )}
@@ -61,7 +66,6 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Acciones Rápidas */}
         <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
           <CardContent className="pt-6 flex flex-col items-center text-center">
             <div className="w-12 h-12 bg-sky-100 rounded-full flex items-center justify-center mb-4">
