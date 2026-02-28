@@ -8,10 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Calendar } from '@/components/ui/calendar';
 import { showSuccess, showError } from '@/utils/toast';
-import { CalendarDays, Plus, Trash2, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Trash2, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { cn } from '@/lib/utils';
 
 const AvailabilityManager = () => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -52,7 +51,7 @@ const AvailabilityManager = () => {
 
     if (error) showError(error.message);
     else {
-      showSuccess("Horario añadido para el día " + format(selectedDate, 'PP', { locale: es }));
+      showSuccess("Horario añadido correctamente");
       fetchSlotsForDate(selectedDate);
     }
   };
@@ -75,7 +74,6 @@ const AvailabilityManager = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Calendario */}
           <div className="space-y-4">
             <Label className="text-sm font-medium text-slate-600">1. Selecciona el día</Label>
             <div className="border rounded-xl p-2 bg-slate-50/50">
@@ -89,11 +87,10 @@ const AvailabilityManager = () => {
             </div>
           </div>
 
-          {/* Gestión de Tramos */}
           <div className="space-y-6">
             <div className="space-y-4">
               <Label className="text-sm font-medium text-slate-600">
-                2. Horarios para el {selectedDate ? format(selectedDate, 'd de MMMM', { locale: es }) : '...'}
+                2. Horarios para el {selectedDate ? format(selectedDate, "d 'de' MMMM", { locale: es }) : '...'}
               </Label>
               
               <div className="p-4 bg-sky-50/50 rounded-xl border border-sky-100 space-y-4">
@@ -123,7 +120,6 @@ const AvailabilityManager = () => {
               </div>
             </div>
 
-            {/* Listado de Tramos del día */}
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
               {loading ? (
                 <p className="text-center text-slate-400 text-sm py-4">Cargando...</p>
