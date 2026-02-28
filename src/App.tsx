@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
+import Session from "./pages/Session";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +38,13 @@ const App = () => (
             <Route path="/dashboard" element={
               <ProtectedRoute allowedRole="patient">
                 <Dashboard />
+              </ProtectedRoute>
+            } />
+
+            {/* Rutas de Videollamada (Protegida por lógica interna) */}
+            <Route path="/session/:appointmentId" element={
+              <ProtectedRoute>
+                <Session />
               </ProtectedRoute>
             } />
 
