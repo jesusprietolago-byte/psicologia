@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, ArrowLeft } from 'lucide-react';
+import { FileText, Download, ArrowLeft, Leaf } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
@@ -33,33 +33,42 @@ const Invoices = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8">
+    <div className="min-h-screen bg-[#fdfaf6] p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Volver
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')} 
+          className="mb-8 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white/50 rounded-full"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al panel
         </Button>
 
-        <h1 className="text-2xl font-light text-slate-800 mb-6">Mis Facturas</h1>
+        <div className="flex items-center space-x-4 mb-10">
+          <div className="w-12 h-12 bg-[#b5b891]/20 rounded-2xl flex items-center justify-center">
+            <FileText className="text-[#6b6e4d] w-6 h-6" />
+          </div>
+          <h1 className="text-4xl font-serif text-[#4a3f35]">Mis Facturas</h1>
+        </div>
         
-        <div className="space-y-4">
+        <div className="space-y-6">
           {invoices.map((inv) => (
-            <Card key={inv.id} className="border-none shadow-sm bg-white">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-lg font-medium">
+            <Card key={inv.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all">
+              <CardHeader className="pb-2 pt-8 px-8">
+                <CardTitle className="flex items-center justify-between text-2xl font-serif text-[#4a3f35]">
                   <span>Factura {inv.invoice_number}</span>
-                  <span className="text-sm font-normal text-slate-500">
+                  <span className="text-sm font-sans font-normal text-[#7a6f64] bg-[#fdfaf6] px-4 py-1 rounded-full border border-[#e8e1d5]">
                     {format(new Date(inv.created_at), 'PPP', { locale: es })}
                   </span>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-2xl font-semibold text-slate-800">{inv.amount}€</p>
-                    <p className="text-xs text-slate-400 uppercase tracking-wider">Servicios Sanitarios Exentos de IVA</p>
+              <CardContent className="p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+                  <div className="space-y-2">
+                    <p className="text-4xl font-serif font-semibold text-[#4a3f35]">{inv.amount}€</p>
+                    <p className="text-xs text-[#7a6f64] uppercase tracking-widest font-bold">Servicios Sanitarios Exentos de IVA</p>
                   </div>
-                  <Button variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-50">
-                    <Download className="w-4 h-4 mr-2" /> Descargar PDF
+                  <Button variant="outline" className="border-[#e8e1d5] text-[#4a3f35] hover:bg-[#fdfaf6] hover:border-[#c17d60] rounded-full px-8 h-12">
+                    <Download className="w-4 h-4 mr-3" /> Descargar PDF
                   </Button>
                 </div>
               </CardContent>
@@ -67,10 +76,10 @@ const Invoices = () => {
           ))}
 
           {!loading && invoices.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-slate-100">
-              <FileText className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-              <h3 className="text-lg font-medium text-slate-400">No tienes facturas todavía</h3>
-              <p className="text-slate-300 text-sm">Las facturas se generarán automáticamente tras tus sesiones.</p>
+            <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+              <Leaf className="w-16 h-16 mx-auto mb-6 text-[#e8e1d5]" />
+              <h3 className="text-2xl font-serif text-[#7a6f64]">No tienes facturas todavía</h3>
+              <p className="text-[#7a6f64] mt-2">Las facturas se generarán automáticamente tras tus sesiones.</p>
             </div>
           )}
         </div>

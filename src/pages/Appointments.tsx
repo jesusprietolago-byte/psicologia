@@ -4,7 +4,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Video, Clock, ArrowLeft } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Video, Clock, ArrowLeft, Leaf } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
@@ -33,42 +34,51 @@ const Appointments = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8">
+    <div className="min-h-screen bg-[#fdfaf6] p-4 md:p-8 font-sans">
       <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Volver
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')} 
+          className="mb-8 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white/50 rounded-full"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al panel
         </Button>
 
-        <h1 className="text-2xl font-light text-slate-800 mb-6">Mis Citas</h1>
+        <div className="flex items-center space-x-4 mb-10">
+          <div className="w-12 h-12 bg-[#c17d60]/10 rounded-2xl flex items-center justify-center">
+            <Calendar className="text-[#c17d60] w-6 h-6" />
+          </div>
+          <h1 className="text-4xl font-serif text-[#4a3f35]">Mis Citas</h1>
+        </div>
         
-        <div className="space-y-4">
+        <div className="space-y-6">
           {appointments.map((apt) => (
-            <Card key={apt.id} className="border-none shadow-sm bg-white">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center justify-between text-lg font-medium">
+            <Card key={apt.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden hover:shadow-2xl transition-all">
+              <CardHeader className="pb-2 pt-8 px-8">
+                <CardTitle className="flex items-center justify-between text-2xl font-serif text-[#4a3f35]">
                   <span>Sesión de Terapia</span>
-                  <Badge variant={apt.status === 'SCHEDULED' ? 'default' : 'secondary'}>
-                    {apt.status}
+                  <Badge className={apt.status === 'SCHEDULED' ? "bg-[#b5b891] text-white" : "bg-[#e8e1d5] text-[#7a6f64]"}>
+                    {apt.status === 'SCHEDULED' ? 'Programada' : apt.status}
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="flex items-center text-slate-600">
-                      <Calendar className="w-4 h-4 mr-2 text-sky-500" />
+              <CardContent className="p-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-8">
+                  <div className="space-y-3">
+                    <div className="flex items-center text-xl text-[#4a3f35] font-medium">
+                      <Calendar className="w-5 h-5 mr-4 text-[#c17d60]" />
                       {format(new Date(apt.start_time), 'PPP', { locale: es })}
                     </div>
-                    <div className="flex items-center text-slate-500 text-sm">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {format(new Date(apt.start_time), 'HH:mm')} - {format(new Date(apt.end_time), 'HH:mm')}
+                    <div className="flex items-center text-[#7a6f64] text-lg">
+                      <Clock className="w-5 h-5 mr-4 opacity-50" />
+                      {format(new Date(apt.start_time), 'HH:mm')} — {format(new Date(apt.end_time), 'HH:mm')}
                     </div>
                   </div>
                   
                   {apt.status === 'SCHEDULED' && apt.video_room_url && (
-                    <Button asChild className="bg-emerald-600 hover:bg-emerald-700">
+                    <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-10 h-14 text-lg shadow-lg shadow-[#c17d60]/20">
                       <Link to={`/session/${apt.id}`}>
-                        <Video className="w-4 h-4 mr-2" /> Entrar a Sesión
+                        <Video className="w-5 h-5 mr-3" /> Entrar a Sesión
                       </Link>
                     </Button>
                   )}
@@ -78,10 +88,10 @@ const Appointments = () => {
           ))}
 
           {!loading && appointments.length === 0 && (
-            <div className="text-center py-20 bg-white rounded-2xl border-2 border-dashed border-slate-100">
-              <Calendar className="w-16 h-16 mx-auto mb-4 text-slate-200" />
-              <h3 className="text-lg font-medium text-slate-400">No tienes citas programadas</h3>
-              <p className="text-slate-300 text-sm">Reserva tu primera cita desde el panel principal.</p>
+            <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+              <Leaf className="w-16 h-16 mx-auto mb-6 text-[#e8e1d5]" />
+              <h3 className="text-2xl font-serif text-[#7a6f64]">No tienes citas programadas</h3>
+              <p className="text-[#7a6f64] mt-2">Reserva tu primera cita desde el panel principal.</p>
             </div>
           )}
         </div>
@@ -90,5 +100,4 @@ const Appointments = () => {
   );
 };
 
-import { Badge } from '@/components/ui/badge';
 export default Appointments;

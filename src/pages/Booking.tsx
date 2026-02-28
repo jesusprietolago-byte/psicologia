@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, addDays, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarDays, Clock, ArrowLeft } from 'lucide-react';
+import { CalendarDays, Clock, ArrowLeft, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
+import { cn } from '@/lib/utils';
 
 const Booking = () => {
   const { user } = useAuth();
@@ -49,29 +50,21 @@ const Booking = () => {
     setLoading(true);
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
-      
-      // 1. Obtener disponibilidad configurada para esa fecha específica
-      const { data: availability, error: availError } = await supabase
+      const { data: availability } = await supabase
         .from('availability')
         .select('*')
         .eq('date', dateStr)
         .eq('is_active', true);
 
-      if (availError) throw availError;
-
-      // 2. Obtener citas ya reservadas para esa fecha
       const startOfDayDate = startOfDay(date);
       const endOfDayDate = addDays(startOfDayDate, 1);
-      const { data: appointments, error: appError } = await supabase
+      const { data: appointments } = await supabase
         .from('appointments')
         .select('start_time, end_time')
         .gte('start_time', startOfDayDate.toISOString())
         .lt('start_time', endOfDayDate.toISOString())
         .neq('status', 'CANCELLED');
 
-      if (appError) throw appError;
-
-      // 3. Generar slots disponibles
       const slots: any[] = [];
       availability?.forEach(avail => {
         const slotStart = new Date(date);
@@ -82,7 +75,6 @@ const Booking = () => {
         const [eh, em] = avail.end_time.split(':').map(Number);
         slotEnd.setHours(eh, em, 0, 0);
 
-        // Verificar si el slot está ocupado
         const isBooked = appointments?.some(app => {
           const appStart = new Date(app.start_time);
           return appStart.getTime() === slotStart.getTime();
@@ -124,7 +116,6 @@ const Booking = () => {
 
       if (appError) throw appError;
 
-      // Crear sala de Daily.co (Simulado o vía Edge Function)
       const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
       const response = await fetch(functionUrl, {
         method: 'POST',
@@ -149,72 +140,78 @@ const Booking = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        <Button variant="ghost" onClick={() => navigate('/dashboard')} className="mb-6">
-          <ArrowLeft className="w-4 h-4 mr-2" /> Volver
+    <div className="min-h-screen bg-[#fdfaf6] p-4 md:p-8 font-sans">
+      <div className="max-w-5xl mx-auto">
+        <Button 
+          variant="ghost" 
+          onClick={() => navigate('/dashboard')} 
+          className="mb-8 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white/50 rounded-full"
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al panel
         </Button>
         
-        <h1 className="text-3xl font-light text-slate-800 mb-8">Reservar Sesión</h1>
+        <h1 className="text-4xl font-serif text-[#4a3f35] mb-10">Reservar Sesión</h1>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-2 border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-medium flex items-center">
-                <CalendarDays className="w-5 h-5 mr-2 text-sky-500" /> 1. Selecciona el día
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+          <Card className="lg:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="pt-8 px-8">
+              <CardTitle className="text-xl font-serif text-[#4a3f35] flex items-center">
+                <CalendarDays className="w-5 h-5 mr-3 text-[#c17d60]" /> 1. Selecciona el día
               </CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-center">
+            <CardContent className="p-8 flex justify-center">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 disabled={(date) => isBefore(date, startOfDay(new Date()))}
                 locale={es}
-                className="rounded-xl border border-slate-100"
+                className="rounded-3xl border border-[#e8e1d5] p-4"
               />
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm bg-white">
-            <CardHeader>
-              <CardTitle className="text-lg font-medium flex items-center">
-                <Clock className="w-5 h-5 mr-2 text-sky-500" /> 2. Horarios
+          <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
+            <CardHeader className="pt-8 px-8">
+              <CardTitle className="text-xl font-serif text-[#4a3f35] flex items-center">
+                <Clock className="w-5 h-5 mr-3 text-[#b5b891]" /> 2. Horarios
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-8">
               {loading ? (
-                <div className="text-center py-12 text-slate-400">Buscando huecos...</div>
+                <div className="text-center py-12 text-[#7a6f64] animate-pulse">Buscando huecos...</div>
               ) : availableSlots.length > 0 ? (
-                <div className="grid grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-3">
                   {availableSlots.map((slot, idx) => (
                     <Button
                       key={idx}
                       variant={selectedSlot?.start === slot.start ? "default" : "outline"}
                       className={cn(
-                        "h-12 justify-start px-4 rounded-xl transition-all",
-                        selectedSlot?.start === slot.start ? "bg-sky-600 hover:bg-sky-700 shadow-md" : "border-slate-100 hover:border-sky-200"
+                        "h-14 justify-start px-6 rounded-2xl transition-all text-lg",
+                        selectedSlot?.start === slot.start 
+                          ? "bg-[#c17d60] hover:bg-[#a66a51] text-white shadow-lg shadow-[#c17d60]/20" 
+                          : "border-[#e8e1d5] text-[#4a3f35] hover:border-[#c17d60] hover:bg-[#fdfaf6]"
                       )}
                       onClick={() => setSelectedSlot(slot)}
                     >
-                      <Clock className="w-4 h-4 mr-3 opacity-50" />
+                      <Clock className="w-4 h-4 mr-4 opacity-50" />
                       {slot.start} - {slot.end}
                     </Button>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-12 border-2 border-dashed border-slate-50 rounded-2xl">
-                  <p className="text-sm text-slate-400">No hay disponibilidad para este día.</p>
+                <div className="text-center py-12 border-2 border-dashed border-[#e8e1d5] rounded-[2rem] bg-[#fdfaf6]/50">
+                  <p className="text-[#7a6f64]">No hay disponibilidad para este día.</p>
                 </div>
               )}
 
               {selectedSlot && (
                 <Button 
                   onClick={handleBooking} 
-                  className="w-full mt-6 bg-sky-600 hover:bg-sky-700 h-12 rounded-xl shadow-lg shadow-sky-100"
+                  className="w-full mt-8 bg-[#b5b891] hover:bg-[#a4a77d] text-white h-14 rounded-full shadow-lg shadow-[#b5b891]/20 text-lg"
                   disabled={loading}
                 >
-                  Confirmar Reserva
+                  <Sparkles className="w-5 h-5 mr-2" /> Confirmar Reserva
                 </Button>
               )}
             </CardContent>
