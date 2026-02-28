@@ -11,6 +11,9 @@ import Dashboard from "./pages/Dashboard";
 import Admin from "./pages/Admin";
 import Session from "./pages/Session";
 import AdmissionForm from "./pages/AdmissionForm";
+import Booking from "./pages/Booking";
+import Appointments from "./pages/Appointments";
+import Invoices from "./pages/Invoices";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,6 +39,24 @@ const App = () => (
             <Route path="/admission" element={
               <ProtectedRoute allowedRole="patient">
                 <AdmissionForm />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/booking" element={
+              <ProtectedRoute allowedRole="patient">
+                <Booking />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/appointments" element={
+              <ProtectedRoute allowedRole="patient">
+                <Appointments />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/invoices" element={
+              <ProtectedRoute allowedRole="patient">
+                <Invoices />
               </ProtectedRoute>
             } />
 
