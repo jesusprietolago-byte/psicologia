@@ -1,5 +1,3 @@
-"use client";
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
@@ -20,7 +18,6 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-// EMAIL DE LA PSICÓLOGA (ADMIN) - ACTUALIZADO
 const ADMIN_EMAIL = "jesusprietolago@gmail.com"; 
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -30,21 +27,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const setData = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        const userRole = session.user.email === ADMIN_EMAIL ? 'admin' : 'patient';
-        setRole(userRole);
-        
-        // Asegurar que el perfil existe en la DB
-        await supabase.from('profiles').upsert({
-          id: session.user.id,
-          email: session.user.email,
-          role: userRole,
-          full_name: session.user.user_metadata.full_name || '',
-        });
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          setUser(session.user);
+          const userRole = session.user.email === ADMIN_EMAIL ? 'admin' : 'patient';
+          setRole(userRole);
+          
+          await supabase.from('profiles').upsert({
+            id: session.user.id,
+            email: session.user.email,
+            role: userRole,
+            full_name: session.user.user_metadata.full_name || '',
+          });
+        }
+      } catch (error) {
+        console.error("Error in AuthProvider initialization:", error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
