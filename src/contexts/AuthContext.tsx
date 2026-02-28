@@ -20,8 +20,8 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-// EMAIL DE LA PSICÓLOGA (ADMIN)
-const ADMIN_EMAIL = "admin@psicologa.es"; 
+// EMAIL DE LA PSICÓLOGA (ADMIN) - ACTUALIZADO
+const ADMIN_EMAIL = "jesusprietolago@gmail.com"; 
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
