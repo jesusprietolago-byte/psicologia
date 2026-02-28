@@ -6,37 +6,41 @@ import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, Link, useNavigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { Leaf, ArrowLeft, Sparkles } from 'lucide-react';
 
 const Login = () => {
-  const { user, role } = useAuth();
-  const navigate = useNavigate();
+  const { user, role, loading } = useAuth();
   const [view, setView] = useState<"sign_in" | "sign_up" | "forgotten_password" | "update_password">("sign_in");
+  const [isInvite, setIsInvite] = useState(false);
 
   useEffect(() => {
-    // 1. Detectar si venimos de un enlace de invitación o recuperación por el HASH de la URL
     const hash = window.location.hash;
+    // Detectamos si es una invitación ANTES de cualquier otra cosa
     if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token="))) {
       setView("update_password");
+      setIsInvite(true);
     }
 
-    // 2. Escuchar cambios de estado de autenticación (por si el hash se procesa internamente)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setView("update_password");
+        setIsInvite(true);
       }
-      if (event === "SIGNED_IN" && view !== "update_password") {
-        // Si se loguea normalmente, redirigir según rol
-        // El AuthContext ya maneja la carga del rol, así que dejamos que el renderizado principal lo haga
+      if (event === "USER_UPDATED" || event === "SIGNED_IN") {
+        // Una vez actualizada la contraseña o logueado, permitimos la redirección
+        setIsInvite(false);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [view]);
+  }, []);
 
-  // Si el usuario ya está logueado y NO estamos en vista de actualizar contraseña, redirigir
-  if (user && view !== "update_password") {
+  // Si está cargando el estado de auth, esperamos
+  if (loading) return null;
+
+  // REDIRECCIÓN: Solo si el usuario está logueado Y NO estamos en medio de una invitación/recuperación
+  if (user && !isInvite) {
     return <Navigate to={role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
 
@@ -56,11 +60,11 @@ const Login = () => {
         </div>
         <CardHeader className="text-center pt-8 pb-2">
           <CardTitle className="text-3xl font-serif text-[#4a3f35]">
-            {view === "update_password" ? "Completa tu registro" : "Bienvenido de nuevo"}
+            {view === "update_password" ? "Crea tu contraseña" : "Bienvenido de nuevo"}
           </CardTitle>
           <p className="text-[#7a6f64] mt-2">
             {view === "update_password" 
-              ? "Establece tu contraseña para acceder a tu espacio" 
+              ? "Establece una contraseña segura para activar tu cuenta" 
               : "Accede a tu espacio personal de bienestar"}
           </p>
         </CardHeader>
@@ -100,11 +104,6 @@ const Login = () => {
                   password_label: 'Nueva contraseña',
                   password_input_placeholder: 'Mínimo 6 caracteres',
                   button_label: 'Activar mi cuenta y entrar',
-                },
-                forgotten_password: {
-                  email_label: 'Correo electrónico',
-                  button_label: 'Enviar instrucciones',
-                  link_text: '¿Olvidaste tu contraseña?',
                 }
               }
             }}
