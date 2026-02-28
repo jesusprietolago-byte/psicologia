@@ -107,16 +107,44 @@ const Admin = () => {
     setSelectedPatient({ ...patient, admission });
   };
 
-  const handleAdmission = async (id: string, status: 'APPROVED' | 'REJECTED') => {
-    const { error } = await supabase
-      .from('admissions')
-      .update({ status })
-      .eq('id', id);
+  const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
+    try {
+      // 1. Actualizar estado en la tabla de admisiones
+      const { error: updateError } = await supabase
+        .from('admissions')
+        .update({ status })
+        .eq('id', admission.id);
 
-    if (error) showError(error.message);
-    else {
-      showSuccess(`Solicitud ${status === 'APPROVED' ? 'aprobada' : 'rechazada'}. Recuerda contactar al paciente.`);
+      if (updateError) throw updateError;
+
+      // 2. Si es aprobado, enviar invitación por email
+      if (status === 'APPROVED') {
+        const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/invite-patient`;
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            email: admission.email,
+            fullName: admission.full_name
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Error al enviar la invitación");
+        }
+        
+        showSuccess(`Solicitud aprobada e invitación enviada a ${admission.email}`);
+      } else {
+        showSuccess("Solicitud rechazada correctamente.");
+      }
+
       fetchAdmissions();
+    } catch (error: any) {
+      showError(error.message);
     }
   };
 
@@ -362,10 +390,10 @@ const Admin = () => {
                         </div>
                       </div>
                       <div className="flex space-x-3 w-full md:w-auto">
-                        <Button onClick={() => handleAdmission(adm.id, 'APPROVED')} className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12">
+                        <Button onClick={() => handleAdmission(adm, 'APPROVED')} className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12">
                           <Check className="w-4 h-4 mr-2" /> Aprobar
                         </Button>
-                        <Button variant="outline" onClick={() => handleAdmission(adm.id, 'REJECTED')} className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12">
+                        <Button variant="outline" onClick={() => handleAdmission(adm, 'REJECTED')} className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12">
                           <X className="w-4 h-4 mr-2" /> Rechazar
                         </Button>
                       </div>
