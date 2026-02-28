@@ -31,7 +31,7 @@ const Booking = () => {
 
   const checkAdmission = async () => {
     if (!user) return;
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('admissions')
       .select('status')
       .eq('patient_id', user.id)
@@ -39,80 +39,65 @@ const Booking = () => {
       .limit(1)
       .maybeSingle();
 
-    if (error) {
-      console.error(error);
-      return;
-    }
-
     setAdmissionStatus(data?.status || 'NOT_STARTED');
     if (data?.status !== 'APPROVED') {
       navigate('/dashboard');
     }
   };
 
-  const generateSlots = (date: Date, availability: any[], appointments: any[]) => {
-    const slots = [];
-    availability.forEach(avail => {
-      const start = new Date(date);
-      const [startHour, startMin] = avail.start_time.split(':').map(Number);
-      start.setHours(startHour, startMin, 0, 0);
-
-      const end = new Date(date);
-      const [endHour, endMin] = avail.end_time.split(':').map(Number);
-      end.setHours(endHour, endMin, 0, 0);
-
-      let current = new Date(start);
-      while (current < end) {
-        const slotStart = new Date(current);
-        const slotEnd = new Date(current.getTime() + 60 * 60 * 1000); // 1 hora
-
-        if (slotEnd <= end) {
-          const isBooked = appointments.some(app => {
-            const appStart = new Date(app.start_time);
-            const appEnd = new Date(app.end_time);
-            return (slotStart >= appStart && slotStart < appEnd) || (slotEnd > appStart && slotEnd <= appEnd) || (slotStart <= appStart && slotEnd >= appEnd);
-          });
-
-          if (!isBooked) {
-            slots.push({
-              start: format(slotStart, 'HH:mm'),
-              end: format(slotEnd, 'HH:mm'),
-              startDate: slotStart,
-              endDate: slotEnd
-            });
-          }
-          current = slotEnd;
-        } else {
-          break;
-        }
-      }
-    });
-    return slots;
-  };
-
   const fetchAvailableSlots = async (date: Date) => {
     setLoading(true);
     try {
-      const dayOfWeek = date.getDay();
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
+      // 1. Obtener disponibilidad configurada para esa fecha específica
       const { data: availability, error: availError } = await supabase
         .from('availability')
         .select('*')
-        .eq('day_of_week', dayOfWeek)
+        .eq('date', dateStr)
         .eq('is_active', true);
 
       if (availError) throw availError;
 
+      // 2. Obtener citas ya reservadas para esa fecha
       const startOfDayDate = startOfDay(date);
       const endOfDayDate = addDays(startOfDayDate, 1);
       const { data: appointments, error: appError } = await supabase
         .from('appointments')
         .select('start_time, end_time')
         .gte('start_time', startOfDayDate.toISOString())
-        .lt('start_time', endOfDayDate.toISOString());
+        .lt('start_time', endOfDayDate.toISOString())
+        .neq('status', 'CANCELLED');
 
       if (appError) throw appError;
 
-      const slots = generateSlots(date, availability || [], appointments || []);
+      // 3. Generar slots disponibles
+      const slots: any[] = [];
+      availability?.forEach(avail => {
+        const slotStart = new Date(date);
+        const [h, m] = avail.start_time.split(':').map(Number);
+        slotStart.setHours(h, m, 0, 0);
+
+        const slotEnd = new Date(date);
+        const [eh, em] = avail.end_time.split(':').map(Number);
+        slotEnd.setHours(eh, em, 0, 0);
+
+        // Verificar si el slot está ocupado
+        const isBooked = appointments?.some(app => {
+          const appStart = new Date(app.start_time);
+          return appStart.getTime() === slotStart.getTime();
+        });
+
+        if (!isBooked) {
+          slots.push({
+            start: avail.start_time.slice(0, 5),
+            end: avail.end_time.slice(0, 5),
+            startDate: slotStart,
+            endDate: slotEnd
+          });
+        }
+      });
+
       setAvailableSlots(slots);
     } catch (error: any) {
       showError(error.message);
@@ -132,35 +117,27 @@ const Booking = () => {
           patient_id: user.id,
           start_time: selectedSlot.startDate.toISOString(),
           end_time: selectedSlot.endDate.toISOString(),
-          status: 'SCHEDULED',
-          payment_status: 'PENDING'
+          status: 'SCHEDULED'
         })
         .select()
         .single();
 
       if (appError) throw appError;
 
-      // Invocar la Edge Function para crear la sala de Daily.co
+      // Crear sala de Daily.co (Simulado o vía Edge Function)
       const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
       const response = await fetch(functionUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
-        body: JSON.stringify({ appointmentId: appointment.id })
+        }
       });
 
-      if (!response.ok) {
-        throw new Error('Error al crear la sala de videollamada');
+      if (response.ok) {
+        const { url } = await response.json();
+        await supabase.from('appointments').update({ video_room_url: url }).eq('id', appointment.id);
       }
-
-      const { url } = await response.json();
-
-      await supabase
-        .from('appointments')
-        .update({ video_room_url: url })
-        .eq('id', appointment.id);
 
       showSuccess('Cita reservada correctamente.');
       navigate('/dashboard');
@@ -178,68 +155,71 @@ const Booking = () => {
           <ArrowLeft className="w-4 h-4 mr-2" /> Volver
         </Button>
         
-        <h1 className="text-2xl font-light text-slate-800 mb-6">Reservar una Cita</h1>
+        <h1 className="text-3xl font-light text-slate-800 mb-8">Reservar Sesión</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="border-none shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <Card className="lg:col-span-2 border-none shadow-sm bg-white">
             <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <CalendarDays className="w-5 h-5 mr-2 text-sky-500" /> Selecciona una fecha
+              <CardTitle className="text-lg font-medium flex items-center">
+                <CalendarDays className="w-5 h-5 mr-2 text-sky-500" /> 1. Selecciona el día
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex justify-center">
               <Calendar
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 disabled={(date) => isBefore(date, startOfDay(new Date()))}
                 locale={es}
-                className="rounded-md border"
+                className="rounded-xl border border-slate-100"
               />
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm">
+          <Card className="border-none shadow-sm bg-white">
             <CardHeader>
-              <CardTitle className="flex items-center text-lg">
-                <Clock className="w-5 h-5 mr-2 text-sky-500" /> Horarios disponibles
+              <CardTitle className="text-lg font-medium flex items-center">
+                <Clock className="w-5 h-5 mr-2 text-sky-500" /> 2. Horarios
               </CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-slate-500">Cargando horarios...</div>
-              ) : availableSlots.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">No hay horarios disponibles para esta fecha</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-2 max-h-[400px] overflow-y-auto pr-2">
-                  {availableSlots.map((slot, index) => (
+                <div className="text-center py-12 text-slate-400">Buscando huecos...</div>
+              ) : availableSlots.length > 0 ? (
+                <div className="grid grid-cols-1 gap-2">
+                  {availableSlots.map((slot, idx) => (
                     <Button
-                      key={index}
+                      key={idx}
                       variant={selectedSlot?.start === slot.start ? "default" : "outline"}
-                      className={selectedSlot?.start === slot.start ? "bg-sky-600 hover:bg-sky-700" : ""}
+                      className={cn(
+                        "h-12 justify-start px-4 rounded-xl transition-all",
+                        selectedSlot?.start === slot.start ? "bg-sky-600 hover:bg-sky-700 shadow-md" : "border-slate-100 hover:border-sky-200"
+                      )}
                       onClick={() => setSelectedSlot(slot)}
                     >
-                      <Clock className="w-4 h-4 mr-2" />
+                      <Clock className="w-4 h-4 mr-3 opacity-50" />
                       {slot.start} - {slot.end}
                     </Button>
                   ))}
                 </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-slate-50 rounded-2xl">
+                  <p className="text-sm text-slate-400">No hay disponibilidad para este día.</p>
+                </div>
+              )}
+
+              {selectedSlot && (
+                <Button 
+                  onClick={handleBooking} 
+                  className="w-full mt-6 bg-sky-600 hover:bg-sky-700 h-12 rounded-xl shadow-lg shadow-sky-100"
+                  disabled={loading}
+                >
+                  Confirmar Reserva
+                </Button>
               )}
             </CardContent>
           </Card>
         </div>
-
-        {selectedSlot && (
-          <div className="mt-6 flex justify-end">
-            <Button 
-              onClick={handleBooking} 
-              disabled={loading}
-              className="bg-sky-600 hover:bg-sky-700"
-            >
-              {loading ? 'Reservando...' : 'Confirmar Reserva'}
-            </Button>
-          </div>
-        )}
       </div>
     </div>
   );
