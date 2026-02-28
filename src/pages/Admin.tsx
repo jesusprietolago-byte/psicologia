@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { LogOut, Users, ClipboardList, Check, X, Pill, History, Baby, MessageSquare } from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
