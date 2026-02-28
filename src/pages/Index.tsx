@@ -28,7 +28,7 @@ const Index = () => {
             <Sparkles className="w-4 h-4 mr-2" /> Tu espacio de calma y bienestar
           </div>
           <h1 className="text-6xl md:text-7xl font-serif text-[#4a3f35] leading-[1.1]">
-            Laura Prieto
+            Laura P. L.
            <br />
             <span className="text-[#c17d60] italic">Psicología Cercana</span>
           </h1>
