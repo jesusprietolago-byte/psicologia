@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { 
   LogOut, 
   Users, 
@@ -23,13 +24,15 @@ import {
   Search,
   UserCircle,
   FileText,
-  ArrowLeft
+  ArrowLeft,
+  ChevronRight
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const Admin = () => {
   const { role, signOut } = useAuth();
@@ -399,6 +402,4 @@ const Admin = () => {
   );
 };
 
-import { cn } from '@/lib/utils';
-import { ChevronRight as ChevronRightIcon } from 'lucide-react';
 export default Admin;
