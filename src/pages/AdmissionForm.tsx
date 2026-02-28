@@ -3,20 +3,21 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { showSuccess, showError } from '@/utils/toast';
-import { ClipboardCheck, ArrowLeft, Leaf } from 'lucide-react';
+import { ArrowLeft, Leaf, User, Mail } from 'lucide-react';
 
 const AdmissionForm = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
+    fullName: '',
+    email: '',
     reason: '',
     previousTherapy: false,
     medication: '',
@@ -25,12 +26,12 @@ const AdmissionForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
     setLoading(true);
 
     try {
       const { error } = await supabase.from('admissions').insert({
-        patient_id: user.id,
+        full_name: formData.fullName,
+        email: formData.email,
         reason_for_consultation: formData.reason,
         previous_therapy: formData.previousTherapy,
         medication: formData.medication,
@@ -40,8 +41,8 @@ const AdmissionForm = () => {
 
       if (error) throw error;
 
-      showSuccess("Formulario enviado correctamente. Revisaremos tu solicitud pronto.");
-      navigate('/dashboard');
+      showSuccess("Solicitud enviada con éxito. Revisaremos tu caso y te contactaremos por email.");
+      navigate('/');
     } catch (error: any) {
       showError("Error al enviar el formulario: " + error.message);
     } finally {
@@ -54,10 +55,10 @@ const AdmissionForm = () => {
       <div className="max-w-2xl mx-auto">
         <Button 
           variant="ghost" 
-          onClick={() => navigate('/dashboard')} 
+          onClick={() => navigate('/')} 
           className="mb-6 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white/50 rounded-full"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al panel
+          <ArrowLeft className="w-4 h-4 mr-2" /> Volver al inicio
         </Button>
 
         <Card className="border-none shadow-2xl shadow-[#c17d60]/5 bg-white rounded-[3rem] overflow-hidden">
@@ -65,11 +66,44 @@ const AdmissionForm = () => {
             <div className="w-16 h-16 bg-[#c17d60]/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
               <Leaf className="text-[#c17d60] w-8 h-8" />
             </div>
-            <CardTitle className="text-3xl font-serif text-[#4a3f35]">Formulario de Admisión</CardTitle>
+            <CardTitle className="text-3xl font-serif text-[#4a3f35]">Solicitud de Admisión</CardTitle>
             <CardDescription className="text-[#7a6f64] mt-2">Cuéntanos un poco sobre ti para poder acompañarte mejor.</CardDescription>
           </CardHeader>
           <CardContent className="pt-10 px-8 md:px-12 pb-12">
             <form onSubmit={handleSubmit} className="space-y-8">
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="fullName" className="text-[#4a3f35] font-medium">Nombre y Apellidos</Label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7a6f64]" />
+                    <Input 
+                      id="fullName"
+                      placeholder="Tu nombre completo"
+                      className="pl-12 h-12 bg-[#fdfaf6] border-[#e8e1d5] rounded-2xl focus:ring-[#c17d60]"
+                      required
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <Label htmlFor="email" className="text-[#4a3f35] font-medium">Correo Electrónico</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7a6f64]" />
+                    <Input 
+                      id="email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      className="pl-12 h-12 bg-[#fdfaf6] border-[#e8e1d5] rounded-2xl focus:ring-[#c17d60]"
+                      required
+                      value={formData.email}
+                      onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    />
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-3">
                 <Label htmlFor="reason" className="text-[#4a3f35] font-medium">¿Cuál es el motivo principal de tu consulta?</Label>
                 <Textarea 
@@ -118,7 +152,7 @@ const AdmissionForm = () => {
               </div>
 
               <Button type="submit" className="w-full bg-[#c17d60] hover:bg-[#a66a51] h-14 text-lg rounded-full shadow-lg shadow-[#c17d60]/20" disabled={loading}>
-                {loading ? "Enviando..." : "Enviar Solicitud"}
+                {loading ? "Enviando..." : "Enviar Solicitud de Admisión"}
               </Button>
             </form>
           </CardContent>

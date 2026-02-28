@@ -25,7 +25,8 @@ import {
   UserCircle,
   ArrowLeft,
   ChevronRight,
-  Leaf
+  Leaf,
+  Mail
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -55,7 +56,7 @@ const Admin = () => {
   const fetchAdmissions = async () => {
     const { data, error } = await supabase
       .from('admissions')
-      .select('*, profiles(full_name, email)')
+      .select('*')
       .eq('status', 'PENDING_APPROVAL')
       .order('created_at', { ascending: false });
     
@@ -114,7 +115,7 @@ const Admin = () => {
 
     if (error) showError(error.message);
     else {
-      showSuccess(`Solicitud ${status === 'APPROVED' ? 'aprobada' : 'rechazada'}`);
+      showSuccess(`Solicitud ${status === 'APPROVED' ? 'aprobada' : 'rechazada'}. Recuerda contactar al paciente.`);
       fetchAdmissions();
     }
   };
@@ -349,13 +350,15 @@ const Admin = () => {
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                       <div className="flex items-center space-x-6">
                         <div className="w-16 h-16 bg-white border border-[#e8e1d5] rounded-3xl flex items-center justify-center text-[#c17d60] text-xl font-bold">
-                          {adm.profiles?.full_name?.charAt(0)}
+                          {adm.full_name?.charAt(0) || 'P'}
                         </div>
                         <div>
                           <CardTitle className="text-2xl font-serif text-[#4a3f35]">
-                            {adm.profiles?.full_name || 'Paciente'}
+                            {adm.full_name || 'Paciente'}
                           </CardTitle>
-                          <CardDescription className="text-[#7a6f64]">{adm.profiles?.email}</CardDescription>
+                          <CardDescription className="flex items-center text-[#7a6f64]">
+                            <Mail className="w-3 h-3 mr-2" /> {adm.email}
+                          </CardDescription>
                         </div>
                       </div>
                       <div className="flex space-x-3 w-full md:w-auto">

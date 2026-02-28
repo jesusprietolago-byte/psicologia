@@ -14,9 +14,9 @@ const Index = () => {
           <span className="text-2xl font-serif font-medium text-[#4a3f35]">Alma Psychology</span>
         </div>
         <div className="flex items-center space-x-8">
-          <Link to="/login" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Logam</Link>
+          <Link to="/login" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Acceso Pacientes</Link>
           <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8">
-            <Link to="/login">Contacto</Link>
+            <Link to="/admission">Solicitar Cita</Link>
           </Button>
         </div>
       </nav>
@@ -28,8 +28,7 @@ const Index = () => {
             <Sparkles className="w-4 h-4 mr-2" /> Tu espacio de calma y bienestar
           </div>
           <h1 className="text-6xl md:text-7xl font-serif text-[#4a3f35] leading-[1.1]">
-            Laura P. L.
-           <br />
+            Laura P. L. <br />
             <span className="text-[#c17d60] italic">Psicología Cercana</span>
           </h1>
           <p className="text-xl text-[#7a6f64] leading-relaxed max-w-lg">
@@ -37,10 +36,10 @@ const Index = () => {
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button asChild size="lg" className="bg-[#c17d60] hover:bg-[#a66a51] text-white px-10 rounded-full text-lg h-14 shadow-lg shadow-[#c17d60]/20">
-              <Link to="/login">Agendar Cita</Link>
+              <Link to="/admission">Comenzar Proceso</Link>
             </Button>
             <Button asChild variant="outline" size="lg" className="border-[#e8e1d5] text-[#4a3f35] hover:bg-[#e8e1d5]/30 px-10 rounded-full text-lg h-14">
-              <Link to="/login">Conozcámonos</Link>
+              <Link to="/login">Ya soy paciente</Link>
             </Button>
           </div>
         </div>
@@ -52,19 +51,6 @@ const Index = () => {
               alt="Espacio de terapia acogedor" 
               className="w-full h-full object-cover"
             />
-          </div>
-          <div className="absolute -bottom-8 -left-8 bg-white p-6 rounded-3xl shadow-xl max-w-[200px] -rotate-3">
-            <div className="flex items-center space-x-2 mb-2">
-              <div className="flex -space-x-2">
-                {[1,2,3].map(i => (
-                  <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-slate-200 overflow-hidden">
-                    <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="User" />
-                  </div>
-                ))}
-              </div>
-              <span className="text-xs font-bold text-[#c17d60]">+500</span>
-            </div>
-            <p className="text-xs text-[#7a6f64]">Pacientes han encontrado su equilibrio con nosotros.</p>
           </div>
         </div>
       </header>
@@ -105,10 +91,6 @@ const Index = () => {
             <span className="text-xl font-serif text-[#4a3f35]">Alma Psychology</span>
           </div>
           <p className="text-[#7a6f64] text-sm">© 2024 Consulta de Psicología. Tu bienestar es nuestra prioridad.</p>
-          <div className="flex space-x-6 text-sm text-[#7a6f64]">
-            <a href="#" className="hover:text-[#c17d60]">Privacidad</a>
-            <a href="#" className="hover:text-[#c17d60]">Términos</a>
-          </div>
         </div>
       </footer>
     </div>
