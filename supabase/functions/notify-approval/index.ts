@@ -7,6 +7,7 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // Manejo de CORS para llamadas desde el navegador
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -19,27 +20,38 @@ serve(async (req) => {
 
     const { email } = await req.json()
 
+    if (!email) {
+      console.error("[notify-approval] ERROR: No se proporcionó un email en la solicitud.");
+      return new Response(
+        JSON.stringify({ error: "El email es obligatorio." }), 
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+      );
+    }
+
     console.log(`[notify-approval] Enviando Magic Link de notificación a: ${email}`);
 
-    // Enviamos un Magic Link. Esto usa el servidor de correo interno de Supabase.
-    // Puedes personalizar el texto de este email en el panel de Supabase:
-    // Auth -> Email Templates -> Magic Link
-    const { error } = await supabaseClient.auth.signInWithOtp({
+    // Usamos signInWithOtp para enviar un Magic Link
+    const { data, error } = await supabaseClient.auth.signInWithOtp({
       email: email,
       options: {
-        emailRedirectTo: `${req.headers.get('origin')}/dashboard`,
+        emailRedirectTo: `${req.headers.get('origin') || 'https://alma-psychology.vercel.app'}/dashboard`,
       }
     })
 
-    if (error) throw error;
+    if (error) {
+      console.error("[notify-approval] ERROR de Supabase Auth:", error);
+      throw new Error(error.message || "Error al enviar el Magic Link");
+    }
 
-    return new Response(JSON.stringify({ success: true }), {
+    console.log("[notify-approval] ÉXITO: Magic Link enviado correctamente para:", email);
+
+    return new Response(JSON.stringify({ success: true, message: "Magic Link enviado" }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
 
   } catch (error) {
-    console.error("[notify-approval] Error:", error.message);
+    console.error("[notify-approval] ERROR CRÍTICO:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,

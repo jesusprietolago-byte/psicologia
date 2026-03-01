@@ -27,7 +27,9 @@ import {
   Leaf,
   Mail,
   RefreshCw,
-  Loader2
+  Loader2,
+  AlertCircle,
+  CheckCircle
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -45,6 +47,7 @@ const Admin = () => {
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionStatus, setActionStatus] = useState<{[key: string]: 'success' | 'error' | null}>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -123,6 +126,8 @@ const Admin = () => {
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     setActionLoading(admission.id);
+    setActionStatus(prev => ({ ...prev, [admission.id]: null }));
+
     try {
       // 1. Actualizar estado de admisión
       const { error: updateError } = await supabase
@@ -139,10 +144,10 @@ const Admin = () => {
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
 
-        // 3. Notificar enviando un Magic Link (usa el mailer interno de Supabase)
+        // 3. Notificar enviando un Magic Link
         try {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/notify-approval`;
-          await fetch(functionUrl, {
+          const response = await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -150,9 +155,18 @@ const Admin = () => {
             },
             body: JSON.stringify({ email: admission.email })
           });
-          showSuccess("Aprobado. Se ha enviado un email de acceso al paciente.");
-        } catch (e) {
-          showSuccess("Aprobado, pero no se pudo enviar el email de notificación.");
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || "Error al enviar el email");
+          }
+
+          setActionStatus(prev => ({ ...prev, [admission.id]: 'success' }));
+          showSuccess("Paciente aprobado. Se ha enviado un email de acceso al paciente.");
+        } catch (emailError: any) {
+          console.error("Error enviando email:", emailError);
+          setActionStatus(prev => ({ ...prev, [admission.id]: 'error' }));
+          showError("Paciente aprobado, pero no se pudo enviar el email de notificación. El paciente puede acceder manualmente desde /login.");
         }
       } else {
         showSuccess("Solicitud rechazada.");
@@ -293,13 +307,13 @@ const Admin = () => {
                           </div>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5]">
-                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Terapia Previa</Label>
+                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Terapia previa</Label>
                               <Badge variant={selectedPatient.admission.previous_therapy ? "default" : "secondary"} className={selectedPatient.admission.previous_therapy ? "bg-[#c17d60]" : ""}>
                                 {selectedPatient.admission.previous_therapy ? 'Sí' : 'No'}
                               </Badge>
                             </div>
                             <div className="p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5]">
-                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Menor de Edad</Label>
+                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Menor de edad</Label>
                               <Badge variant={selectedPatient.admission.is_minor ? "destructive" : "secondary"}>
                                 {selectedPatient.admission.is_minor ? 'Sí' : 'No'}
                               </Badge>
@@ -419,7 +433,13 @@ const Admin = () => {
                             disabled={actionLoading === adm.id}
                             className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12"
                           >
-                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar y Notificar</>}
+                            {actionLoading === adm.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Check className="w-4 h-4 mr-2" /> Aprobar y Notificar
+                              </>
+                            )}
                           </Button>
                           <Button 
                             variant="outline" 
@@ -453,6 +473,23 @@ const Admin = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* Indicador de estado del envío */}
+                      {actionStatus[adm.id] && (
+                        <div className="flex items-center justify-center p-4 bg-white rounded-[2rem] border border-[#e8e1d5]">
+                          {actionStatus[adm.id] === 'success' ? (
+                            <div className="flex items-center text-green-600">
+                              <CheckCircle className="w-5 h-5 mr-2" />
+                              <span className="font-medium">Email enviado correctamente</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-red-600">
+                              <AlertCircle className="w-5 h-5 mr-2" />
+                              <span className="font-medium">Error al enviar el email</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 ))
