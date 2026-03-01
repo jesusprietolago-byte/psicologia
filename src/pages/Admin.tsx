@@ -48,6 +48,7 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<{[key: string]: 'success' | 'error' | null}>({});
+  const [actionError, setActionError] = useState<{[key: string]: string | null}>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -127,8 +128,11 @@ const Admin = () => {
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     setActionLoading(admission.id);
     setActionStatus(prev => ({ ...prev, [admission.id]: null }));
+    setActionError(prev => ({ ...prev, [admission.id]: null }));
 
     try {
+      console.log(`[Admin] Procesando admisión ${admission.id} con email:`, admission.email);
+
       // 1. Actualizar estado de admisión
       const { error: updateError } = await supabase
         .from('admissions')
@@ -153,18 +157,28 @@ const Admin = () => {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
             },
-            body: JSON.stringify({ email: admission.email })
+            body: JSON.stringify({ 
+              email: admission.email,
+              admissionId: admission.id 
+            })
           });
+
+          console.log(`[Admin] Respuesta de la función para ${admission.email}:`, response);
 
           if (!response.ok) {
             const errorData = await response.json();
+            console.error(`[Admin] Error en la función para ${admission.email}:`, errorData);
             throw new Error(errorData.error || "Error al enviar el email");
           }
+
+          const result = await response.json();
+          console.log(`[Admin] Éxito para ${admission.email}:`, result);
 
           setActionStatus(prev => ({ ...prev, [admission.id]: 'success' }));
           showSuccess("Paciente aprobado. Se ha enviado un email de acceso al paciente.");
         } catch (emailError: any) {
-          console.error("Error enviando email:", emailError);
+          console.error(`[Admin] Error enviando email a ${admission.email}:`, emailError);
+          setActionError(prev => ({ ...prev, [admission.id]: emailError.message }));
           setActionStatus(prev => ({ ...prev, [admission.id]: 'error' }));
           showError("Paciente aprobado, pero no se pudo enviar el email de notificación. El paciente puede acceder manualmente desde /login.");
         }
@@ -174,6 +188,7 @@ const Admin = () => {
       
       await fetchAllData();
     } catch (error: any) {
+      console.error(`[Admin] Error general en ${admission.id}:`, error);
       showError(error.message);
     } finally {
       setActionLoading(null);
@@ -488,6 +503,15 @@ const Admin = () => {
                               <span className="font-medium">Error al enviar el email</span>
                             </div>
                           )}
+                        </div>
+                      )}
+
+                      {/* Mensaje de error detallado */}
+                      {actionError[adm.id] && (
+                        <div className="p-4 bg-red-50 border border-red-200 rounded-[2rem]">
+                          <p className="text-red-700 text-sm">
+                            <strong>Error:</strong> {actionError[adm.id]}
+                          </p>
                         </div>
                       )}
                     </CardContent>
