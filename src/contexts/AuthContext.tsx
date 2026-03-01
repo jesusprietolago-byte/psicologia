@@ -37,29 +37,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         role: userRole,
         full_name: currentUser.user_metadata.full_name || '',
         updated_at: new Date().toISOString(),
-      });
+      }, { onConflict: 'id' });
     } catch (error) {
       console.error("Error updating profile in AuthProvider:", error);
     }
   };
 
   useEffect(() => {
-    // 1. Cargar sesión inicial
+    let mounted = true;
+
     const initSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-        await updateProfile(session.user);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+
+        if (mounted && session?.user) {
+          setUser(session.user);
+          await updateProfile(session.user);
+        }
+      } catch (error) {
+        console.error("Error initializing session:", error);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      setLoading(false);
     };
 
     initSession();
 
-    // 2. Escuchar cambios (Login, Logout, Confirmación de Email)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth Event:", event);
-      
+      if (!mounted) return;
+
       if (session?.user) {
         setUser(session.user);
         await updateProfile(session.user);
@@ -71,7 +78,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
