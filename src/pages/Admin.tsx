@@ -27,7 +27,8 @@ import {
   ChevronRight,
   Leaf,
   Mail,
-  RefreshCw
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -69,7 +70,7 @@ const Admin = () => {
       .eq('status', 'PENDING_APPROVAL')
       .order('created_at', { ascending: false });
     
-    if (error) showError(error.message);
+    if (error) showError("Error cargando admisiones: " + error.message);
     else setAdmissions(data || []);
   };
 
@@ -80,7 +81,7 @@ const Admin = () => {
       .eq('status', 'SCHEDULED')
       .order('start_time', { ascending: true });
     
-    if (error) showError(error.message);
+    if (error) showError("Error cargando citas: " + error.message);
     else setAppointments(data || []);
   };
 
@@ -91,7 +92,7 @@ const Admin = () => {
       .eq('role', 'patient')
       .order('full_name', { ascending: true });
     
-    if (error) showError(error.message);
+    if (error) showError("Error cargando pacientes: " + error.message);
     else setPatients(data || []);
   };
 
@@ -117,33 +118,41 @@ const Admin = () => {
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     try {
-      // Actualizar el estado de la admisión
-      const { error: updateError } = await supabase
+      console.log(`Intentando cambiar estado a ${status} para admisión ${admission.id}`);
+      
+      // 1. Actualizar el estado de la admisión
+      const { error: updateError, data } = await supabase
         .from('admissions')
-        .update({ status })
-        .eq('id', admission.id);
+        .update({ status: status })
+        .eq('id', admission.id)
+        .select();
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        console.error("Error de Supabase al actualizar admisión:", updateError);
+        throw new Error(`Error de base de datos: ${updateError.message}. ¿Has aplicado las políticas RLS?`);
+      }
 
-      // Si se aprueba, nos aseguramos de que el perfil tenga el rol de paciente (por si acaso)
+      if (!data || data.length === 0) {
+        throw new Error("No se encontró la fila para actualizar o no tienes permisos (RLS).");
+      }
+
+      // 2. Si se aprueba, asegurar el rol de paciente en el perfil
       if (status === 'APPROVED') {
-        await supabase
+        const { error: profileError } = await supabase
           .from('profiles')
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
+        
+        if (profileError) console.warn("No se pudo actualizar el rol del perfil, pero la admisión se aprobó:", profileError.message);
       }
 
       showSuccess(status === 'APPROVED' ? "Solicitud aprobada con éxito." : "Solicitud rechazada.");
       
-      // Refrescar la lista local inmediatamente
-      setAdmissions(prev => prev.filter(a => a.id !== admission.id));
-      
-      // Refrescar todo para estar seguros
-      fetchAdmissions();
-      fetchPatients();
+      // Refrescar datos
+      await fetchAllData();
     } catch (error: any) {
-      console.error("Error en handleAdmission:", error);
-      showError("No se pudo actualizar: " + error.message);
+      console.error("Fallo crítico en handleAdmission:", error);
+      showError(error.message);
     }
   };
 
