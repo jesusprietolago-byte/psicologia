@@ -25,40 +25,52 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
+  const updateProfile = async (currentUser: User) => {
+    const userRole = currentUser.email === ADMIN_EMAIL ? 'admin' : 'patient';
+    setRole(userRole);
+    
+    try {
+      // Intentamos actualizar el perfil. Si falla por RLS, al menos tenemos el rol en memoria.
+      await supabase.from('profiles').upsert({
+        id: currentUser.id,
+        email: currentUser.email,
+        role: userRole,
+        full_name: currentUser.user_metadata.full_name || '',
+        updated_at: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error("Error updating profile in AuthProvider:", error);
+    }
+  };
+
   useEffect(() => {
-    const setData = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user) {
-          setUser(session.user);
-          const userRole = session.user.email === ADMIN_EMAIL ? 'admin' : 'patient';
-          setRole(userRole);
-          
-          await supabase.from('profiles').upsert({
-            id: session.user.id,
-            email: session.user.email,
-            role: userRole,
-            full_name: session.user.user_metadata.full_name || '',
-          });
-        }
-      } catch (error) {
-        console.error("Error in AuthProvider initialization:", error);
-      } finally {
-        setLoading(false);
+    // 1. Cargar sesión inicial
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
+        await updateProfile(session.user);
       }
+      setLoading(false);
     };
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    initSession();
+
+    // 2. Escuchar cambios (Login, Logout, Confirmación de Email)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth Event:", event);
+      
       if (session?.user) {
-        setRole(session.user.email === ADMIN_EMAIL ? 'admin' : 'patient');
+        setUser(session.user);
+        await updateProfile(session.user);
       } else {
+        setUser(null);
         setRole(null);
       }
+      
       setLoading(false);
     });
 
-    setData();
     return () => subscription.unsubscribe();
   }, []);
 
