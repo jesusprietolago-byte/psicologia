@@ -38,22 +38,21 @@ const AdmissionForm = () => {
 
     try {
       // 1. Registrar al usuario en Supabase Auth
-      // Importante: El trigger 'on_auth_user_created' en la DB creará el perfil automáticamente
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
         options: {
           data: {
             full_name: formData.fullName,
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/login`
         }
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("No se pudo crear el usuario. Inténtalo de nuevo.");
+      if (!authData.user) throw new Error("No se pudo crear el usuario.");
 
       // 2. Insertar los datos de admisión
-      // Usamos el ID del usuario recién creado
       const { error: admissionError } = await supabase.from('admissions').insert({
         patient_id: authData.user.id,
         full_name: formData.fullName,
@@ -65,26 +64,14 @@ const AdmissionForm = () => {
         status: 'PENDING_APPROVAL'
       });
 
-      if (admissionError) {
-        console.error("Error insertando admisión:", admissionError);
-        // Si falla la admisión pero el usuario se creó, informamos al usuario
-        showError("Cuenta creada, pero hubo un error con el formulario. Por favor, contacta con soporte.");
-        return;
-      }
+      if (admissionError) throw admissionError;
 
-      showSuccess("¡Solicitud enviada con éxito!");
-      
-      // Si el usuario ya está logueado (depende de la config de Supabase), vamos al dashboard
-      // Si requiere confirmación de email, vamos al login
-      if (authData.session) {
-        navigate('/dashboard');
-      } else {
-        showSuccess("Revisa tu correo para confirmar tu cuenta antes de entrar.");
-        navigate('/login');
-      }
+      showSuccess("¡Cuenta creada y solicitud enviada!");
+      showSuccess("REVISA TU EMAIL para confirmar tu cuenta antes de intentar entrar.");
+      navigate('/login');
       
     } catch (error: any) {
-      console.error("Error en el proceso de admisión:", error);
+      console.error("Error:", error);
       showError(error.message || "Ocurrió un error inesperado");
     } finally {
       setLoading(false);
@@ -107,8 +94,8 @@ const AdmissionForm = () => {
             <div className="w-16 h-16 bg-[#c17d60]/10 rounded-3xl flex items-center justify-center mx-auto mb-6">
               <Leaf className="text-[#c17d60] w-8 h-8" />
             </div>
-            <CardTitle className="text-3xl font-serif text-[#4a3f35]">Comienza tu proceso</CardTitle>
-            <CardDescription className="text-[#7a6f64] mt-2">Crea tu cuenta y cuéntanos un poco sobre ti.</CardDescription>
+            <CardTitle className="text-3xl font-serif text-[#4a3f35]">Crea tu cuenta</CardTitle>
+            <CardDescription className="text-[#7a6f64] mt-2">Regístrate y cuéntanos tu motivo de consulta.</CardDescription>
           </CardHeader>
           <CardContent className="pt-10 px-8 md:px-12 pb-12">
             <form onSubmit={handleSubmit} className="space-y-8">
@@ -148,7 +135,7 @@ const AdmissionForm = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <Label htmlFor="pass" className="text-[#4a3f35] font-medium">Contraseña para tu cuenta</Label>
+                  <Label htmlFor="pass" className="text-[#4a3f35] font-medium">Contraseña</Label>
                   <div className="relative">
                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7a6f64]" />
                     <Input 

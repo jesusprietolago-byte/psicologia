@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { 
   LogOut, 
-  Users, 
   ClipboardList, 
   Check, 
   X, 
@@ -28,7 +27,6 @@ import {
   Leaf,
   Mail,
   RefreshCw,
-  AlertTriangle,
   Loader2
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
@@ -64,7 +62,7 @@ const Admin = () => {
         fetchPatients()
       ]);
     } catch (error) {
-      console.error("Error cargando datos globales:", error);
+      console.error("Error cargando datos:", error);
     } finally {
       setLoading(false);
     }
@@ -126,52 +124,42 @@ const Admin = () => {
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     setActionLoading(admission.id);
     try {
-      // 1. Actualizar el estado de la admisión
-      const { error: updateError, data } = await supabase
+      // 1. Actualizar estado de admisión
+      const { error: updateError } = await supabase
         .from('admissions')
         .update({ status: status })
-        .eq('id', admission.id)
-        .select();
+        .eq('id', admission.id);
 
-      if (updateError) {
-        throw new Error(`Error de base de datos: ${updateError.message}`);
-      }
+      if (updateError) throw updateError;
 
-      if (!data || data.length === 0) {
-        throw new Error("No se pudo actualizar la admisión.");
-      }
-
-      // 2. Si se aprueba, asegurar el rol de paciente en el perfil e invocar notificación
       if (status === 'APPROVED') {
+        // 2. Asegurar rol de paciente
         await supabase
           .from('profiles')
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
 
-        // Invocar Edge Function para notificar por email
+        // 3. Notificar enviando un Magic Link (usa el mailer interno de Supabase)
         try {
-          const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/send-approval-email`;
+          const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/notify-approval`;
           await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
             },
-            body: JSON.stringify({
-              email: admission.email,
-              fullName: admission.full_name
-            })
+            body: JSON.stringify({ email: admission.email })
           });
+          showSuccess("Aprobado. Se ha enviado un email de acceso al paciente.");
         } catch (e) {
-          console.warn("No se pudo enviar el email de notificación, pero la aprobación fue exitosa:", e);
+          showSuccess("Aprobado, pero no se pudo enviar el email de notificación.");
         }
+      } else {
+        showSuccess("Solicitud rechazada.");
       }
-
-      showSuccess(status === 'APPROVED' ? "Solicitud aprobada y paciente notificado." : "Solicitud rechazada.");
       
       await fetchAllData();
     } catch (error: any) {
-      console.error("Fallo en handleAdmission:", error);
       showError(error.message);
     } finally {
       setActionLoading(null);
@@ -431,7 +419,7 @@ const Admin = () => {
                             disabled={actionLoading === adm.id}
                             className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12"
                           >
-                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
+                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar y Notificar</>}
                           </Button>
                           <Button 
                             variant="outline" 

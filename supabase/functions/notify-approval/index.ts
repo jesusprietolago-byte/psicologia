@@ -1,0 +1,48 @@
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    )
+
+    const { email } = await req.json()
+
+    console.log(`[notify-approval] Enviando Magic Link de notificación a: ${email}`);
+
+    // Enviamos un Magic Link. Esto usa el servidor de correo interno de Supabase.
+    // Puedes personalizar el texto de este email en el panel de Supabase:
+    // Auth -> Email Templates -> Magic Link
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email: email,
+      options: {
+        emailRedirectTo: `${req.headers.get('origin')}/dashboard`,
+      }
+    })
+
+    if (error) throw error;
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+    })
+
+  } catch (error) {
+    console.error("[notify-approval] Error:", error.message);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 400,
+    })
+  }
+})

@@ -25,7 +25,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
-  // Función para determinar el rol de forma inmediata y sincronizar en segundo plano
   const handleUserSession = async (currentUser: User | null) => {
     if (!currentUser) {
       setUser(null);
@@ -34,56 +33,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // 1. Determinamos el rol inmediatamente por el email (sin esperar a la DB)
     const userRole = currentUser.email === ADMIN_EMAIL ? 'admin' : 'patient';
-    
     setUser(currentUser);
     setRole(userRole);
-    
-    // 2. Marcamos como "cargado" YA. No esperamos a la base de datos.
     setLoading(false);
 
-    // 3. Sincronizamos con la DB en segundo plano (background)
-    // Si falla, no bloqueamos al usuario.
+    // Sincronizar perfil en background
     try {
-      supabase.from('profiles').upsert({
+      await supabase.from('profiles').upsert({
         id: currentUser.id,
         email: currentUser.email,
         role: userRole,
         full_name: currentUser.user_metadata.full_name || '',
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' }).then(({ error }) => {
-        if (error) console.warn("Sincronización de perfil en background falló (RLS), pero el usuario puede continuar.");
-      });
+      }, { onConflict: 'id' });
     } catch (e) {
-      console.error("Error silencioso en sync de perfil:", e);
+      console.warn("Sync perfil falló (normal si es RLS), continuando...");
     }
   };
 
   useEffect(() => {
-    // Inicializar sesión
+    // 1. Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserSession(session?.user || null);
-    }).catch(() => {
-      setLoading(false);
-    });
+    }).catch(() => setLoading(false));
 
-    // Escuchar cambios de estado
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleUserSession(session?.user || null);
+    // 2. Escuchar cambios (incluyendo el login automático tras pulsar el enlace del email)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth Event:", event);
+      if (session?.user) {
+        handleUserSession(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setRole(null);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setRole(null);
-    } catch (error) {
-      console.error("Error al cerrar sesión:", error);
-    }
+    await supabase.auth.signOut();
+    setUser(null);
+    setRole(null);
   };
 
   return (
