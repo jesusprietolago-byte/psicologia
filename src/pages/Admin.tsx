@@ -109,39 +109,14 @@ const Admin = () => {
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     try {
-      // 1. Actualizar estado en la tabla de admisiones
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('admissions')
         .update({ status })
         .eq('id', admission.id);
 
-      if (updateError) throw updateError;
+      if (error) throw error;
 
-      // 2. Si es aprobado, enviar invitación por email
-      if (status === 'APPROVED') {
-        const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/invite-patient`;
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify({
-            email: admission.email,
-            fullName: admission.full_name
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "Error al enviar la invitación");
-        }
-        
-        showSuccess(`Solicitud aprobada e invitación enviada a ${admission.email}`);
-      } else {
-        showSuccess("Solicitud rechazada correctamente.");
-      }
-
+      showSuccess(status === 'APPROVED' ? "Solicitud aprobada. El paciente ya puede reservar." : "Solicitud rechazada.");
       fetchAdmissions();
     } catch (error: any) {
       showError(error.message);
