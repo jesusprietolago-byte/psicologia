@@ -28,7 +28,8 @@ import {
   Leaf,
   Mail,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -45,6 +46,7 @@ const Admin = () => {
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -55,12 +57,17 @@ const Admin = () => {
 
   const fetchAllData = async () => {
     setLoading(true);
-    await Promise.all([
-      fetchAdmissions(),
-      fetchAppointments(),
-      fetchPatients()
-    ]);
-    setLoading(false);
+    try {
+      await Promise.all([
+        fetchAdmissions(),
+        fetchAppointments(),
+        fetchPatients()
+      ]);
+    } catch (error) {
+      console.error("Error cargando datos globales:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchAdmissions = async () => {
@@ -70,8 +77,8 @@ const Admin = () => {
       .eq('status', 'PENDING_APPROVAL')
       .order('created_at', { ascending: false });
     
-    if (error) showError("Error cargando admisiones: " + error.message);
-    else setAdmissions(data || []);
+    if (error) throw error;
+    setAdmissions(data || []);
   };
 
   const fetchAppointments = async () => {
@@ -81,8 +88,8 @@ const Admin = () => {
       .eq('status', 'SCHEDULED')
       .order('start_time', { ascending: true });
     
-    if (error) showError("Error cargando citas: " + error.message);
-    else setAppointments(data || []);
+    if (error) throw error;
+    setAppointments(data || []);
   };
 
   const fetchPatients = async () => {
@@ -92,8 +99,8 @@ const Admin = () => {
       .eq('role', 'patient')
       .order('full_name', { ascending: true });
     
-    if (error) showError("Error cargando pacientes: " + error.message);
-    else setPatients(data || []);
+    if (error) throw error;
+    setPatients(data || []);
   };
 
   const fetchPatientDetails = async (patient: any) => {
@@ -117,9 +124,8 @@ const Admin = () => {
   };
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
+    setActionLoading(admission.id);
     try {
-      console.log(`Intentando cambiar estado a ${status} para admisión ${admission.id}`);
-      
       // 1. Actualizar el estado de la admisión
       const { error: updateError, data } = await supabase
         .from('admissions')
@@ -128,12 +134,11 @@ const Admin = () => {
         .select();
 
       if (updateError) {
-        console.error("Error de Supabase al actualizar admisión:", updateError);
-        throw new Error(`Error de base de datos: ${updateError.message}. ¿Has aplicado las políticas RLS?`);
+        throw new Error(`Error de base de datos: ${updateError.message}. Verifica las políticas RLS.`);
       }
 
       if (!data || data.length === 0) {
-        throw new Error("No se encontró la fila para actualizar o no tienes permisos (RLS).");
+        throw new Error("No se pudo actualizar la admisión. Es posible que no tengas permisos de administrador.");
       }
 
       // 2. Si se aprueba, asegurar el rol de paciente en el perfil
@@ -143,7 +148,9 @@ const Admin = () => {
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
         
-        if (profileError) console.warn("No se pudo actualizar el rol del perfil, pero la admisión se aprobó:", profileError.message);
+        if (profileError) {
+          console.warn("No se pudo actualizar el rol del perfil:", profileError.message);
+        }
       }
 
       showSuccess(status === 'APPROVED' ? "Solicitud aprobada con éxito." : "Solicitud rechazada.");
@@ -151,8 +158,10 @@ const Admin = () => {
       // Refrescar datos
       await fetchAllData();
     } catch (error: any) {
-      console.error("Fallo crítico en handleAdmission:", error);
+      console.error("Fallo en handleAdmission:", error);
       showError(error.message);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -404,10 +413,19 @@ const Admin = () => {
                           </div>
                         </div>
                         <div className="flex space-x-3 w-full md:w-auto">
-                          <Button onClick={() => handleAdmission(adm, 'APPROVED')} className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12">
-                            <Check className="w-4 h-4 mr-2" /> Aprobar
+                          <Button 
+                            onClick={() => handleAdmission(adm, 'APPROVED')} 
+                            disabled={actionLoading === adm.id}
+                            className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12"
+                          >
+                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
                           </Button>
-                          <Button variant="outline" onClick={() => handleAdmission(adm, 'REJECTED')} className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12">
+                          <Button 
+                            variant="outline" 
+                            onClick={() => handleAdmission(adm, 'REJECTED')} 
+                            disabled={actionLoading === adm.id}
+                            className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12"
+                          >
                             <X className="w-4 h-4 mr-2" /> Rechazar
                           </Button>
                         </div>

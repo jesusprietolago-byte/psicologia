@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { showSuccess, showError } from '@/utils/toast';
-import { ArrowLeft, Leaf, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Leaf, User, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const AdmissionForm = () => {
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ const AdmissionForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (formData.password.length < 6) {
       showError("La contraseña debe tener al menos 6 caracteres");
       return;
@@ -37,6 +38,7 @@ const AdmissionForm = () => {
 
     try {
       // 1. Registrar al usuario en Supabase Auth
+      // Importante: El trigger 'on_auth_user_created' en la DB creará el perfil automáticamente
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -48,9 +50,10 @@ const AdmissionForm = () => {
       });
 
       if (authError) throw authError;
-      if (!authData.user) throw new Error("No se pudo crear el usuario");
+      if (!authData.user) throw new Error("No se pudo crear el usuario. Inténtalo de nuevo.");
 
-      // 2. Insertar los datos de admisión vinculados al nuevo ID de usuario
+      // 2. Insertar los datos de admisión
+      // Usamos el ID del usuario recién creado
       const { error: admissionError } = await supabase.from('admissions').insert({
         patient_id: authData.user.id,
         full_name: formData.fullName,
@@ -62,12 +65,27 @@ const AdmissionForm = () => {
         status: 'PENDING_APPROVAL'
       });
 
-      if (admissionError) throw admissionError;
+      if (admissionError) {
+        console.error("Error insertando admisión:", admissionError);
+        // Si falla la admisión pero el usuario se creó, informamos al usuario
+        showError("Cuenta creada, pero hubo un error con el formulario. Por favor, contacta con soporte.");
+        return;
+      }
 
-      showSuccess("¡Cuenta creada y solicitud enviada! Revisa tu email para confirmar tu cuenta.");
-      navigate('/login');
+      showSuccess("¡Solicitud enviada con éxito!");
+      
+      // Si el usuario ya está logueado (depende de la config de Supabase), vamos al dashboard
+      // Si requiere confirmación de email, vamos al login
+      if (authData.session) {
+        navigate('/dashboard');
+      } else {
+        showSuccess("Revisa tu correo para confirmar tu cuenta antes de entrar.");
+        navigate('/login');
+      }
+      
     } catch (error: any) {
-      showError("Error: " + error.message);
+      console.error("Error en el proceso de admisión:", error);
+      showError(error.message || "Ocurrió un error inesperado");
     } finally {
       setLoading(false);
     }
@@ -202,7 +220,11 @@ const AdmissionForm = () => {
               </div>
 
               <Button type="submit" className="w-full bg-[#c17d60] hover:bg-[#a66a51] h-14 text-lg rounded-full shadow-lg shadow-[#c17d60]/20" disabled={loading}>
-                {loading ? "Creando cuenta..." : "Crear cuenta y enviar solicitud"}
+                {loading ? (
+                  <><Loader2 className="w-5 h-5 animate-spin mr-2" /> Procesando...</>
+                ) : (
+                  "Crear cuenta y enviar solicitud"
+                )}
               </Button>
             </form>
           </CardContent>

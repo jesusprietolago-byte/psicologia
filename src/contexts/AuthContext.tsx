@@ -25,21 +25,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
-  const updateProfile = async (currentUser: User) => {
+  const updateProfileInDB = async (currentUser: User) => {
     const userRole = currentUser.email === ADMIN_EMAIL ? 'admin' : 'patient';
     setRole(userRole);
     
     try {
-      // Intentamos actualizar el perfil. Si falla por RLS, al menos tenemos el rol en memoria.
-      await supabase.from('profiles').upsert({
+      // Intentamos actualizar el perfil. 
+      // Si falla por RLS (ej: el usuario no tiene permiso para actualizarse a sí mismo aún), 
+      // el rol en memoria (setRole) sigue siendo válido para la navegación.
+      const { error } = await supabase.from('profiles').upsert({
         id: currentUser.id,
         email: currentUser.email,
         role: userRole,
         full_name: currentUser.user_metadata.full_name || '',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
+
+      if (error) {
+        console.warn("Aviso: No se pudo sincronizar el perfil en DB (posible RLS), pero el rol en memoria es:", userRole);
+      }
     } catch (error) {
-      console.error("Error updating profile in AuthProvider:", error);
+      console.error("Error crítico actualizando perfil en AuthProvider:", error);
     }
   };
 
@@ -51,12 +57,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
 
-        if (mounted && session?.user) {
-          setUser(session.user);
-          await updateProfile(session.user);
+        if (mounted) {
+          if (session?.user) {
+            setUser(session.user);
+            await updateProfileInDB(session.user);
+          } else {
+            setUser(null);
+            setRole(null);
+          }
         }
       } catch (error) {
-        console.error("Error initializing session:", error);
+        console.error("Error inicializando sesión:", error);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -69,7 +80,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (session?.user) {
         setUser(session.user);
-        await updateProfile(session.user);
+        await updateProfileInDB(session.user);
       } else {
         setUser(null);
         setRole(null);
@@ -85,7 +96,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+    }
   };
 
   return (
