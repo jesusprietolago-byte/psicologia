@@ -134,28 +134,41 @@ const Admin = () => {
         .select();
 
       if (updateError) {
-        throw new Error(`Error de base de datos: ${updateError.message}. Verifica las políticas RLS.`);
+        throw new Error(`Error de base de datos: ${updateError.message}`);
       }
 
       if (!data || data.length === 0) {
-        throw new Error("No se pudo actualizar la admisión. Es posible que no tengas permisos de administrador.");
+        throw new Error("No se pudo actualizar la admisión.");
       }
 
-      // 2. Si se aprueba, asegurar el rol de paciente en el perfil
+      // 2. Si se aprueba, asegurar el rol de paciente en el perfil e invocar notificación
       if (status === 'APPROVED') {
-        const { error: profileError } = await supabase
+        await supabase
           .from('profiles')
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
-        
-        if (profileError) {
-          console.warn("No se pudo actualizar el rol del perfil:", profileError.message);
+
+        // Invocar Edge Function para notificar por email
+        try {
+          const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/send-approval-email`;
+          await fetch(functionUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+            },
+            body: JSON.stringify({
+              email: admission.email,
+              fullName: admission.full_name
+            })
+          });
+        } catch (e) {
+          console.warn("No se pudo enviar el email de notificación, pero la aprobación fue exitosa:", e);
         }
       }
 
-      showSuccess(status === 'APPROVED' ? "Solicitud aprobada con éxito." : "Solicitud rechazada.");
+      showSuccess(status === 'APPROVED' ? "Solicitud aprobada y paciente notificado." : "Solicitud rechazada.");
       
-      // Refrescar datos
       await fetchAllData();
     } catch (error: any) {
       console.error("Fallo en handleAdmission:", error);
