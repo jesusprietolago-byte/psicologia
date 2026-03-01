@@ -14,17 +14,20 @@ import {
   Video, 
   ArrowRight,
   Leaf,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 const Dashboard = () => {
   const { user, role, signOut } = useAuth();
   const [admissionStatus, setAdmissionStatus] = useState<string | null>(null);
   const [nextAppointment, setNextAppointment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (user && role === 'patient') {
@@ -33,6 +36,7 @@ const Dashboard = () => {
   }, [user, role]);
 
   const fetchPatientData = async () => {
+    setRefreshing(true);
     try {
       const { data: admissionData } = await supabase
         .from('admissions')
@@ -61,6 +65,7 @@ const Dashboard = () => {
       console.error("Error fetching dashboard data:", error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -84,9 +89,14 @@ const Dashboard = () => {
           </div>
           <h1 className="text-xl font-serif font-medium text-[#4a3f35]">Mi Espacio</h1>
         </div>
-        <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-[#c17d60] hover:bg-[#fdfaf6] rounded-full">
-          <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
-        </Button>
+        <div className="flex items-center space-x-4">
+          <Button variant="ghost" size="icon" onClick={fetchPatientData} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+            <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+          </Button>
+          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-[#c17d60] hover:bg-[#fdfaf6] rounded-full">
+            <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
+          </Button>
+        </div>
       </nav>
 
       <main className="max-w-5xl mx-auto p-6 space-y-10">
@@ -127,6 +137,9 @@ const Dashboard = () => {
                   <div className="space-y-2">
                     <h3 className="text-2xl font-serif text-[#4a3f35]">Solicitud en revisión</h3>
                     <p className="text-[#7a6f64] leading-relaxed">Estamos revisando tu información con mucho cariño. Te avisaremos muy pronto para que puedas reservar tu primera cita.</p>
+                    <Button variant="link" onClick={fetchPatientData} className="text-[#c17d60] p-0 h-auto font-medium">
+                      Comprobar estado ahora
+                    </Button>
                   </div>
                 </div>
               )}

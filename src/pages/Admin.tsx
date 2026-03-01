@@ -26,7 +26,8 @@ import {
   ArrowLeft,
   ChevronRight,
   Leaf,
-  Mail
+  Mail,
+  RefreshCw
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -47,11 +48,19 @@ const Admin = () => {
 
   useEffect(() => {
     if (role === 'admin') {
-      fetchAdmissions();
-      fetchAppointments();
-      fetchPatients();
+      fetchAllData();
     }
   }, [role]);
+
+  const fetchAllData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchAdmissions(),
+      fetchAppointments(),
+      fetchPatients()
+    ]);
+    setLoading(false);
+  };
 
   const fetchAdmissions = async () => {
     const { data, error } = await supabase
@@ -73,7 +82,6 @@ const Admin = () => {
     
     if (error) showError(error.message);
     else setAppointments(data || []);
-    setLoading(false);
   };
 
   const fetchPatients = async () => {
@@ -109,17 +117,33 @@ const Admin = () => {
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     try {
-      const { error } = await supabase
+      // Actualizar el estado de la admisión
+      const { error: updateError } = await supabase
         .from('admissions')
         .update({ status })
         .eq('id', admission.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      showSuccess(status === 'APPROVED' ? "Solicitud aprobada. El paciente ya puede reservar." : "Solicitud rechazada.");
+      // Si se aprueba, nos aseguramos de que el perfil tenga el rol de paciente (por si acaso)
+      if (status === 'APPROVED') {
+        await supabase
+          .from('profiles')
+          .update({ role: 'patient' })
+          .eq('id', admission.patient_id);
+      }
+
+      showSuccess(status === 'APPROVED' ? "Solicitud aprobada con éxito." : "Solicitud rechazada.");
+      
+      // Refrescar la lista local inmediatamente
+      setAdmissions(prev => prev.filter(a => a.id !== admission.id));
+      
+      // Refrescar todo para estar seguros
       fetchAdmissions();
+      fetchPatients();
     } catch (error: any) {
-      showError(error.message);
+      console.error("Error en handleAdmission:", error);
+      showError("No se pudo actualizar: " + error.message);
     }
   };
 
@@ -139,9 +163,14 @@ const Admin = () => {
           </div>
           <h1 className="text-2xl font-serif font-medium text-[#4a3f35]">Panel Profesional</h1>
         </div>
-        <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full">
-          <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
-        </Button>
+        <div className="flex items-center space-x-4">
+          <Button variant="outline" size="icon" onClick={fetchAllData} className="rounded-full border-[#e8e1d5] text-[#7a6f64]">
+            <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+          </Button>
+          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full">
+            <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
+          </Button>
+        </div>
       </nav>
 
       <main className="max-w-7xl mx-auto p-8">
@@ -347,57 +376,64 @@ const Admin = () => {
           {/* Pestaña de Admisiones */}
           <TabsContent value="admissions" className="space-y-8">
             <div className="grid grid-cols-1 gap-8">
-              {admissions.map((adm) => (
-                <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[3rem] overflow-hidden">
-                  <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-8">
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                      <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-white border border-[#e8e1d5] rounded-3xl flex items-center justify-center text-[#c17d60] text-xl font-bold">
-                          {adm.full_name?.charAt(0) || 'P'}
+              {admissions.length > 0 ? (
+                admissions.map((adm) => (
+                  <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[3rem] overflow-hidden">
+                    <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-8">
+                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                        <div className="flex items-center space-x-6">
+                          <div className="w-16 h-16 bg-white border border-[#e8e1d5] rounded-3xl flex items-center justify-center text-[#c17d60] text-xl font-bold">
+                            {adm.full_name?.charAt(0) || 'P'}
+                          </div>
+                          <div>
+                            <CardTitle className="text-2xl font-serif text-[#4a3f35]">
+                              {adm.full_name || 'Paciente'}
+                            </CardTitle>
+                            <CardDescription className="flex items-center text-[#7a6f64]">
+                              <Mail className="w-3 h-3 mr-2" /> {adm.email}
+                            </CardDescription>
+                          </div>
                         </div>
-                        <div>
-                          <CardTitle className="text-2xl font-serif text-[#4a3f35]">
-                            {adm.full_name || 'Paciente'}
-                          </CardTitle>
-                          <CardDescription className="flex items-center text-[#7a6f64]">
-                            <Mail className="w-3 h-3 mr-2" /> {adm.email}
-                          </CardDescription>
-                        </div>
-                      </div>
-                      <div className="flex space-x-3 w-full md:w-auto">
-                        <Button onClick={() => handleAdmission(adm, 'APPROVED')} className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12">
-                          <Check className="w-4 h-4 mr-2" /> Aprobar
-                        </Button>
-                        <Button variant="outline" onClick={() => handleAdmission(adm, 'REJECTED')} className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12">
-                          <X className="w-4 h-4 mr-2" /> Rechazar
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-10 space-y-10">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                      <div className="space-y-4">
-                        <Label className="text-[#c17d60] flex items-center text-xs uppercase tracking-widest font-bold">
-                          <MessageSquare className="w-4 h-4 mr-2" /> Motivo de Consulta
-                        </Label>
-                        <p className="text-[#4a3f35] text-lg leading-relaxed bg-[#fdfaf6] p-6 rounded-[2rem] border border-[#e8e1d5]">
-                          {adm.reason_for_consultation}
-                        </p>
-                      </div>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
-                          <span className="text-[#4a3f35] font-medium flex items-center"><History className="w-5 h-5 mr-3 text-[#c17d60]" /> Terapia previa</span>
-                          <Badge variant={adm.previous_therapy ? "default" : "secondary"} className={adm.previous_therapy ? "bg-[#c17d60]" : ""}>{adm.previous_therapy ? 'Sí' : 'No'}</Badge>
-                        </div>
-                        <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
-                          <span className="text-[#4a3f35] font-medium flex items-center"><Baby className="w-5 h-5 mr-3 text-[#b5b891]" /> Menor de edad</span>
-                          <Badge variant={adm.is_minor ? "destructive" : "secondary"}>{adm.is_minor ? 'Sí' : 'No'}</Badge>
+                        <div className="flex space-x-3 w-full md:w-auto">
+                          <Button onClick={() => handleAdmission(adm, 'APPROVED')} className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12">
+                            <Check className="w-4 h-4 mr-2" /> Aprobar
+                          </Button>
+                          <Button variant="outline" onClick={() => handleAdmission(adm, 'REJECTED')} className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12">
+                            <X className="w-4 h-4 mr-2" /> Rechazar
+                          </Button>
                         </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardHeader>
+                    <CardContent className="p-10 space-y-10">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                        <div className="space-y-4">
+                          <Label className="text-[#c17d60] flex items-center text-xs uppercase tracking-widest font-bold">
+                            <MessageSquare className="w-4 h-4 mr-2" /> Motivo de Consulta
+                          </Label>
+                          <p className="text-[#4a3f35] text-lg leading-relaxed bg-[#fdfaf6] p-6 rounded-[2rem] border border-[#e8e1d5]">
+                            {adm.reason_for_consultation}
+                          </p>
+                        </div>
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
+                            <span className="text-[#4a3f35] font-medium flex items-center"><History className="w-5 h-5 mr-3 text-[#c17d60]" /> Terapia previa</span>
+                            <Badge variant={adm.previous_therapy ? "default" : "secondary"} className={adm.previous_therapy ? "bg-[#c17d60]" : ""}>{adm.previous_therapy ? 'Sí' : 'No'}</Badge>
+                          </div>
+                          <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
+                            <span className="text-[#4a3f35] font-medium flex items-center"><Baby className="w-5 h-5 mr-3 text-[#b5b891]" /> Menor de edad</span>
+                            <Badge variant={adm.is_minor ? "destructive" : "secondary"}>{adm.is_minor ? 'Sí' : 'No'}</Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+                  <ClipboardList className="w-16 h-16 mx-auto mb-6 text-[#e8e1d5]" />
+                  <h3 className="text-2xl font-serif text-[#7a6f64]">No hay solicitudes pendientes</h3>
+                </div>
+              )}
             </div>
           </TabsContent>
 
