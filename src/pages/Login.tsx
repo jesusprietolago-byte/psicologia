@@ -5,41 +5,57 @@ import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
-import { Leaf, ArrowLeft, Sparkles } from 'lucide-react';
+import { Leaf, ArrowLeft, Sparkles, ShieldCheck, Loader2 } from 'lucide-react';
+import { showSuccess, showError } from '@/utils/toast';
 
 const Login = () => {
-  const { user, role, loading } = useAuth();
-  const [view, setView] = useState<"sign_in" | "sign_up" | "forgotten_password" | "update_password">("sign_in");
+  const { user, role, loading: authLoading } = useAuth();
   const [isInvite, setIsInvite] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
-    // Detectamos si es una invitación ANTES de cualquier otra cosa
+    // Detectamos si el usuario viene de un email de invitación o recuperación
     if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token="))) {
-      setView("update_password");
       setIsInvite(true);
     }
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
-        setView("update_password");
-        setIsInvite(true);
-      }
-      if (event === "USER_UPDATED" || event === "SIGNED_IN") {
-        // Una vez actualizada la contraseña o logueado, permitimos la redirección
-        setIsInvite(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
-  // Si está cargando el estado de auth, esperamos
-  if (loading) return null;
+  const handleSetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 6) {
+      showError("La contraseña debe tener al menos 6 caracteres");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      showError("Las contraseñas no coinciden");
+      return;
+    }
 
-  // REDIRECCIÓN: Solo si el usuario está logueado Y NO estamos en medio de una invitación/recuperación
+    setUpdating(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) throw error;
+      
+      showSuccess("¡Cuenta activada con éxito!");
+      setIsInvite(false); // Esto permitirá la redirección al Dashboard
+    } catch (error: any) {
+      showError("Error al activar la cuenta: " + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (authLoading) return null;
+
+  // Si ya está logueado y NO es una invitación pendiente de contraseña, redirigimos
   if (user && !isInvite) {
     return <Navigate to={role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
@@ -55,59 +71,92 @@ const Login = () => {
       <Card className="w-full max-w-md border-none shadow-2xl bg-white rounded-[3rem] overflow-hidden">
         <div className="h-32 bg-[#c17d60] flex items-center justify-center">
           <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-            {view === "update_password" ? <Sparkles className="text-white w-8 h-8" /> : <Leaf className="text-white w-8 h-8" />}
+            {isInvite ? <Sparkles className="text-white w-8 h-8" /> : <Leaf className="text-white w-8 h-8" />}
           </div>
         </div>
+
         <CardHeader className="text-center pt-8 pb-2">
           <CardTitle className="text-3xl font-serif text-[#4a3f35]">
-            {view === "update_password" ? "Crea tu contraseña" : "Bienvenido de nuevo"}
+            {isInvite ? "Activa tu cuenta" : "Bienvenido de nuevo"}
           </CardTitle>
           <p className="text-[#7a6f64] mt-2">
-            {view === "update_password" 
-              ? "Establece una contraseña segura para activar tu cuenta" 
+            {isInvite 
+              ? "Establece tu contraseña para acceder a tu espacio" 
               : "Accede a tu espacio personal de bienestar"}
           </p>
         </CardHeader>
+
         <CardContent className="p-8">
-          <Auth
-            supabaseClient={supabase}
-            view={view}
-            appearance={{ 
-              theme: ThemeSupa,
-              variables: {
-                default: {
-                  colors: {
-                    brand: '#c17d60',
-                    brandAccent: '#a66a51',
-                    inputBackground: '#fdfaf6',
-                    inputText: '#4a3f35',
-                    inputBorder: '#e8e1d5',
-                    inputPlaceholder: '#7a6f64',
-                  },
-                  radii: {
-                    buttonRadius: '9999px',
-                    inputRadius: '1rem',
+          {isInvite ? (
+            /* FORMULARIO MANUAL PARA INVITADOS (EVITA ERRORES DE SUPABASE UI) */
+            <form onSubmit={handleSetPassword} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="pass" className="text-[#4a3f35]">Nueva Contraseña</Label>
+                <Input 
+                  id="pass"
+                  type="password" 
+                  placeholder="Mínimo 6 caracteres"
+                  className="h-12 bg-[#fdfaf6] border-[#e8e1d5] rounded-xl"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm" className="text-[#4a3f35]">Confirmar Contraseña</Label>
+                <Input 
+                  id="confirm"
+                  type="password" 
+                  placeholder="Repite tu contraseña"
+                  className="h-12 bg-[#fdfaf6] border-[#e8e1d5] rounded-xl"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full bg-[#c17d60] hover:bg-[#a66a51] h-12 rounded-full text-white shadow-lg shadow-[#c17d60]/20"
+                disabled={updating}
+              >
+                {updating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><ShieldCheck className="w-4 h-4 mr-2" /> Activar y Entrar</>}
+              </Button>
+            </form>
+          ) : (
+            /* LOGIN NORMAL PARA USUARIOS YA REGISTRADOS */
+            <Auth
+              supabaseClient={supabase}
+              appearance={{ 
+                theme: ThemeSupa,
+                variables: {
+                  default: {
+                    colors: {
+                      brand: '#c17d60',
+                      brandAccent: '#a66a51',
+                      inputBackground: '#fdfaf6',
+                      inputText: '#4a3f35',
+                      inputBorder: '#e8e1d5',
+                    },
+                    radii: {
+                      buttonRadius: '9999px',
+                      inputRadius: '1rem',
+                    }
                   }
                 }
-              }
-            }}
-            providers={[]}
-            localization={{
-              variables: {
-                sign_in: {
-                  email_label: 'Correo electrónico',
-                  password_label: 'Contraseña',
-                  button_label: 'Iniciar sesión',
-                  link_text: '¿Ya tienes cuenta? Inicia sesión',
-                },
-                update_password: {
-                  password_label: 'Nueva contraseña',
-                  password_input_placeholder: 'Mínimo 6 caracteres',
-                  button_label: 'Activar mi cuenta y entrar',
+              }}
+              providers={[]}
+              localization={{
+                variables: {
+                  sign_in: {
+                    email_label: 'Correo electrónico',
+                    password_label: 'Contraseña',
+                    button_label: 'Iniciar sesión',
+                    link_text: '¿Ya tienes cuenta? Inicia sesión',
+                  }
                 }
-              }
-            }}
-          />
+              }}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
