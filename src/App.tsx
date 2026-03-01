@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import Index from "./pages/Index";
@@ -21,20 +21,22 @@ const queryClient = new QueryClient();
 
 // Componente para manejar redirecciones de Auth (Invitaciones/Recuperación)
 const AuthRedirectHandler = ({ children }: { children: React.ReactNode }) => {
+  const location = useLocation();
   const [shouldRedirect, setShouldRedirect] = useState(false);
 
   useEffect(() => {
     const hash = window.location.hash;
-    // Si hay un token en la URL y no estamos ya en login, redirigimos
+    // Si hay un token en la URL y no estamos ya en login, redirigimos preservando el hash
     if (hash && (hash.includes("access_token=") || hash.includes("type=invite") || hash.includes("type=recovery"))) {
-      if (window.location.pathname !== "/login") {
+      if (location.pathname !== "/login") {
         setShouldRedirect(true);
       }
     }
-  }, []);
+  }, [location]);
 
   if (shouldRedirect) {
-    return <Navigate to="/login" state={{ fromHash: true }} replace />;
+    // Importante: Pasamos el hash actual a la nueva ruta
+    return <Navigate to={`/login${window.location.hash}`} replace />;
   }
 
   return <>{children}</>;

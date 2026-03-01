@@ -9,27 +9,37 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { Leaf, ArrowLeft, Sparkles, ShieldCheck, Loader2 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 
 const Login = () => {
   const { user, role, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [isInvite, setIsInvite] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [updating, setUpdating] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
 
   useEffect(() => {
-    const hash = window.location.hash;
-    // Detectamos si el usuario viene de un email de invitación o recuperación
-    if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token="))) {
-      setIsInvite(true);
-    }
+    const checkHash = () => {
+      const hash = window.location.hash;
+      console.log("Detectado hash en Login:", hash);
+      if (hash && (hash.includes("type=invite") || hash.includes("type=recovery") || hash.includes("access_token="))) {
+        setIsInvite(true);
+      }
+    };
+
+    checkHash();
+    // También escuchamos cambios en el hash por si acaso
+    window.addEventListener('hashchange', checkHash);
+    return () => window.removeEventListener('hashchange', checkHash);
   }, []);
 
   const handleSetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (newPassword.length < 6) {
       showError("La contraseña debe tener al menos 6 caracteres");
       return;
@@ -41,22 +51,40 @@ const Login = () => {
 
     setUpdating(true);
     try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      // Intentamos actualizar la contraseña del usuario actual (que debería tener sesión por el hash)
+      const { error } = await supabase.auth.updateUser({ 
+        password: newPassword 
+      });
+
       if (error) throw error;
       
-      showSuccess("¡Cuenta activada con éxito!");
-      setIsInvite(false); // Esto permitirá la redirección al Dashboard
+      showSuccess("¡Contraseña establecida con éxito!");
+      setIsSuccess(true);
+      
+      // Limpiamos el hash de la URL para evitar bucles
+      window.location.hash = "";
+      
+      // Pequeña pausa para que el usuario vea el éxito antes de redirigir
+      setTimeout(() => {
+        navigate(role === 'admin' ? '/admin' : '/dashboard');
+      }, 1500);
+
     } catch (error: any) {
-      showError("Error al activar la cuenta: " + error.message);
+      console.error("Error actualizando contraseña:", error);
+      showError("No se pudo establecer la contraseña: " + error.message);
     } finally {
       setUpdating(false);
     }
   };
 
-  if (authLoading) return null;
+  if (authLoading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]">
+      <Loader2 className="w-10 h-10 animate-spin text-[#c17d60]" />
+    </div>
+  );
 
-  // Si ya está logueado y NO es una invitación pendiente de contraseña, redirigimos
-  if (user && !isInvite) {
+  // Si ya está logueado y NO estamos en proceso de invitación/éxito, redirigimos
+  if (user && !isInvite && !isSuccess) {
     return <Navigate to={role === 'admin' ? '/admin' : '/dashboard'} replace />;
   }
 
@@ -88,7 +116,6 @@ const Login = () => {
 
         <CardContent className="p-8">
           {isInvite ? (
-            /* FORMULARIO MANUAL PARA INVITADOS (EVITA ERRORES DE SUPABASE UI) */
             <form onSubmit={handleSetPassword} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="pass" className="text-[#4a3f35]">Nueva Contraseña</Label>
@@ -100,6 +127,7 @@ const Login = () => {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
               </div>
               <div className="space-y-2">
@@ -112,6 +140,7 @@ const Login = () => {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
+                  autoComplete="new-password"
                 />
               </div>
               <Button 
@@ -121,9 +150,11 @@ const Login = () => {
               >
                 {updating ? <Loader2 className="w-5 h-5 animate-spin" /> : <><ShieldCheck className="w-4 h-4 mr-2" /> Activar y Entrar</>}
               </Button>
+              <p className="text-xs text-center text-[#7a6f64] px-4">
+                Al hacer clic en activar, tu cuenta quedará vinculada a este correo y podrás acceder a tu panel.
+              </p>
             </form>
           ) : (
-            /* LOGIN NORMAL PARA USUARIOS YA REGISTRADOS */
             <Auth
               supabaseClient={supabase}
               appearance={{ 
