@@ -20,15 +20,27 @@ serve(async (req) => {
 
     const { email, fullName } = await req.json()
 
-    console.log(`[invite-patient] Invitando a ${fullName} (${email})...`);
+    console.log(`[invite-patient] Intentando invitar a: ${fullName} (${email})`);
 
-    // Invitar al usuario al sistema de Auth de Supabase
-    // Esto envía automáticamente un correo de invitación
+    // 1. Intentar invitar al usuario
     const { data, error } = await supabaseClient.auth.admin.inviteUserByEmail(email, {
-      data: { full_name: fullName }
+      data: { full_name: fullName },
+      // Redirigir al login después de que el usuario haga clic en el enlace
+      redirectTo: `${req.headers.get('origin')}/login`
     })
 
-    if (error) throw error
+    if (error) {
+      console.error("[invite-patient] Error de Supabase Auth:", error.message);
+      
+      // Si el error es por el límite de correos, damos un mensaje más útil
+      if (error.message.includes("rate limit")) {
+        throw new Error("Límite de correos alcanzado. Por favor, aumenta el 'Max Emails per Hour' en el panel de Supabase (Auth -> Rate Limits).");
+      }
+      
+      throw error;
+    }
+
+    console.log("[invite-patient] Invitación enviada con éxito para:", email);
 
     return new Response(JSON.stringify({ success: true, user: data.user }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -36,7 +48,7 @@ serve(async (req) => {
     })
 
   } catch (error) {
-    console.error("[invite-patient] Error:", error.message);
+    console.error("[invite-patient] Error crítico:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
