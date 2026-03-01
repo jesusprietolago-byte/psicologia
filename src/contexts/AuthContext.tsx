@@ -25,79 +25,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [role, setRole] = useState<Role>(null);
   const [loading, setLoading] = useState(true);
 
-  const updateProfileInDB = async (currentUser: User) => {
+  // Función para determinar el rol de forma inmediata y sincronizar en segundo plano
+  const handleUserSession = async (currentUser: User | null) => {
+    if (!currentUser) {
+      setUser(null);
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
+    // 1. Determinamos el rol inmediatamente por el email (sin esperar a la DB)
     const userRole = currentUser.email === ADMIN_EMAIL ? 'admin' : 'patient';
+    
+    setUser(currentUser);
     setRole(userRole);
     
+    // 2. Marcamos como "cargado" YA. No esperamos a la base de datos.
+    setLoading(false);
+
+    // 3. Sincronizamos con la DB en segundo plano (background)
+    // Si falla, no bloqueamos al usuario.
     try {
-      // Intentamos actualizar el perfil. 
-      // Si falla por RLS (ej: el usuario no tiene permiso para actualizarse a sí mismo aún), 
-      // el rol en memoria (setRole) sigue siendo válido para la navegación.
-      const { error } = await supabase.from('profiles').upsert({
+      supabase.from('profiles').upsert({
         id: currentUser.id,
         email: currentUser.email,
         role: userRole,
         full_name: currentUser.user_metadata.full_name || '',
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
-
-      if (error) {
-        console.warn("Aviso: No se pudo sincronizar el perfil en DB (posible RLS), pero el rol en memoria es:", userRole);
-      }
-    } catch (error) {
-      console.error("Error crítico actualizando perfil en AuthProvider:", error);
+      }, { onConflict: 'id' }).then(({ error }) => {
+        if (error) console.warn("Sincronización de perfil en background falló (RLS), pero el usuario puede continuar.");
+      });
+    } catch (e) {
+      console.error("Error silencioso en sync de perfil:", e);
     }
   };
 
   useEffect(() => {
-    let mounted = true;
-
-    const initSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
-
-        if (mounted) {
-          if (session?.user) {
-            setUser(session.user);
-            await updateProfileInDB(session.user);
-          } else {
-            setUser(null);
-            setRole(null);
-          }
-        }
-      } catch (error) {
-        console.error("Error inicializando sesión:", error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      if (session?.user) {
-        setUser(session.user);
-        await updateProfileInDB(session.user);
-      } else {
-        setUser(null);
-        setRole(null);
-      }
-      
+    // Inicializar sesión
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      handleUserSession(session?.user || null);
+    }).catch(() => {
       setLoading(false);
     });
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
+    // Escuchar cambios de estado
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleUserSession(session?.user || null);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signOut = async () => {
     try {
       await supabase.auth.signOut();
+      setUser(null);
+      setRole(null);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
