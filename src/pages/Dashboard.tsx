@@ -18,7 +18,8 @@ import {
   RefreshCw,
   Check,
   X,
-  Loader2
+  Loader2,
+  AlertCircle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -44,6 +45,7 @@ const Dashboard = () => {
   const fetchPatientData = async () => {
     setRefreshing(true);
     try {
+      // 1. Estado de admisión
       const { data: admissionData } = await supabase
         .from('admissions')
         .select('status')
@@ -55,7 +57,7 @@ const Dashboard = () => {
       setAdmissionStatus(admissionData?.status || 'NOT_STARTED');
 
       if (admissionData?.status === 'APPROVED') {
-        // 1. Buscar cita confirmada
+        // 2. Buscar cita confirmada (SCHEDULED)
         const { data: appointmentData } = await supabase
           .from('appointments')
           .select('*')
@@ -68,7 +70,7 @@ const Dashboard = () => {
         
         setNextAppointment(appointmentData);
 
-        // 2. Buscar cita pendiente de confirmación
+        // 3. Buscar cita propuesta por el admin (PENDING_CONFIRMATION)
         const { data: pendingData } = await supabase
           .from('appointments')
           .select('*')
@@ -101,7 +103,7 @@ const Dashboard = () => {
 
       if (status === 'SCHEDULED') {
         showSuccess("¡Cita confirmada! Te esperamos.");
-        // Intentar crear sala de video
+        // Intentar crear sala de video automáticamente al confirmar
         try {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
           const response = await fetch(functionUrl, {
@@ -115,11 +117,15 @@ const Dashboard = () => {
             const { url } = await response.json();
             await supabase.from('appointments').update({ video_room_url: url }).eq('id', id);
           }
-        } catch (e) { console.error(e); }
+        } catch (e) { 
+          console.error("Error creando sala:", e); 
+        }
       } else {
-        showSuccess("Cita rechazada.");
+        showSuccess("Cita rechazada correctamente.");
       }
-      fetchPatientData();
+      
+      // Recargar datos para actualizar la UI
+      await fetchPatientData();
     } catch (error: any) {
       showError(error.message);
     } finally {
@@ -169,40 +175,7 @@ const Dashboard = () => {
               <CardTitle className="text-xl font-serif text-[#4a3f35]">Tu proceso actual</CardTitle>
             </CardHeader>
             <CardContent className="p-8">
-              {/* Cita Pendiente de Confirmación (Invitación del Admin) */}
-              {pendingAppointment && (
-                <div className="mb-8 bg-amber-50 p-8 rounded-[2rem] border border-amber-100 space-y-6 animate-in fade-in slide-in-from-top-4">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-white p-3 rounded-2xl shadow-sm">
-                      <Sparkles className="text-amber-600 w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-serif text-[#4a3f35]">Laura te ha propuesto una cita</h3>
-                      <p className="text-amber-700 font-medium">
-                        {format(new Date(pendingAppointment.start_time), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-3">
-                    <Button 
-                      onClick={() => handleAppointmentAction(pendingAppointment.id, 'SCHEDULED')}
-                      disabled={actionLoading}
-                      className="flex-1 bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full h-12"
-                    >
-                      {actionLoading ? <Loader2 className="animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Confirmar Cita</>}
-                    </Button>
-                    <Button 
-                      variant="outline"
-                      onClick={() => handleAppointmentAction(pendingAppointment.id, 'CANCELLED')}
-                      disabled={actionLoading}
-                      className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-100 rounded-full h-12"
-                    >
-                      Rechazar
-                    </Button>
-                  </div>
-                </div>
-              )}
-
+              
               {admissionStatus === 'NOT_STARTED' && (
                 <div className="py-6 text-center space-y-6">
                   <div className="w-20 h-20 bg-[#fdfaf6] rounded-3xl flex items-center justify-center mx-auto border border-[#e8e1d5]">
@@ -220,36 +193,77 @@ const Dashboard = () => {
                   <div className="bg-white p-4 rounded-2xl shadow-sm"><Clock className="text-[#c17d60] w-8 h-8" /></div>
                   <div className="space-y-2">
                     <h3 className="text-2xl font-serif text-[#4a3f35]">Solicitud en revisión</h3>
-                    <p className="text-[#7a6f64]">Estamos revisando tu información. Te avisaremos pronto.</p>
+                    <p className="text-[#7a6f64]">Estamos revisando tu información. Te avisaremos pronto por email.</p>
                   </div>
                 </div>
               )}
 
               {admissionStatus === 'APPROVED' && (
-                <div className="space-y-6">
-                  {nextAppointment ? (
-                    <div className="bg-[#b5b891]/10 p-8 rounded-[2rem] border border-[#b5b891]/30 flex flex-col sm:flex-row justify-between items-center gap-6">
+                <div className="space-y-8">
+                  
+                  {/* PRIORIDAD 1: Cita propuesta por Laura */}
+                  {pendingAppointment ? (
+                    <div className="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-200 space-y-6 animate-in fade-in slide-in-from-top-4">
+                      <div className="flex items-start space-x-5">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100">
+                          <Sparkles className="text-amber-600 w-8 h-8" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-2xl font-serif text-[#4a3f35]">Laura te ha propuesto una cita</h3>
+                          <p className="text-amber-800 font-medium text-lg">
+                            {format(new Date(pendingAppointment.start_time), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                          </p>
+                          <p className="text-amber-700/70 text-sm">Por favor, confirma si puedes asistir o rechaza para liberar el hueco.</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col sm:flex-row gap-4 pt-2">
+                        <Button 
+                          onClick={() => handleAppointmentAction(pendingAppointment.id, 'SCHEDULED')}
+                          disabled={actionLoading}
+                          className="flex-1 bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full h-14 text-lg shadow-lg shadow-[#b5b891]/20"
+                        >
+                          {actionLoading ? <Loader2 className="animate-spin" /> : <><Check className="w-5 h-5 mr-2" /> Confirmar Asistencia</>}
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          onClick={() => handleAppointmentAction(pendingAppointment.id, 'CANCELLED')}
+                          disabled={actionLoading}
+                          className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-100 rounded-full h-14 text-lg"
+                        >
+                          <X className="w-5 h-5 mr-2" /> Rechazar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : nextAppointment ? (
+                    /* PRIORIDAD 2: Próxima cita ya confirmada */
+                    <div className="bg-[#b5b891]/10 p-8 rounded-[2.5rem] border border-[#b5b891]/30 flex flex-col sm:flex-row justify-between items-center gap-8">
                       <div className="flex items-center space-x-6">
-                        <div className="bg-white p-4 rounded-2xl shadow-sm"><Video className="text-[#6b6e4d] w-8 h-8" /></div>
+                        <div className="bg-white p-5 rounded-3xl shadow-sm border border-[#b5b891]/20">
+                          <Video className="text-[#6b6e4d] w-10 h-10" />
+                        </div>
                         <div>
                           <h3 className="text-2xl font-serif text-[#4a3f35]">Próxima Sesión</h3>
-                          <p className="text-[#6b6e4d] font-medium mt-1">
+                          <p className="text-[#6b6e4d] font-medium text-lg mt-1">
                             {format(new Date(nextAppointment.start_time), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
                           </p>
                         </div>
                       </div>
-                      <Button asChild className="bg-[#6b6e4d] hover:bg-[#5a5d41] text-white rounded-full px-8 h-12 w-full sm:w-auto">
+                      <Button asChild className="bg-[#6b6e4d] hover:bg-[#5a5d41] text-white rounded-full px-10 h-14 text-lg w-full sm:w-auto shadow-lg shadow-[#6b6e4d]/20">
                         <Link to={`/session/${nextAppointment.id}`}>Entrar a la sala</Link>
                       </Button>
                     </div>
-                  ) : !pendingAppointment && (
-                    <div className="py-6 text-center space-y-6">
-                      <div className="w-20 h-20 bg-[#fdfaf6] rounded-3xl flex items-center justify-center mx-auto border border-[#e8e1d5]">
-                        <Sparkles className="text-[#c17d60] w-10 h-10" />
+                  ) : (
+                    /* PRIORIDAD 3: No hay nada, permitir reservar */
+                    <div className="py-12 text-center space-y-8 bg-[#fdfaf6]/50 rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+                      <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm border border-[#e8e1d5]">
+                        <Calendar className="text-[#c17d60] w-10 h-10" />
                       </div>
-                      <h3 className="text-2xl font-serif text-[#4a3f35]">¡Todo listo!</h3>
-                      <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8 h-12">
-                        <Link to="/booking">Reservar Cita</Link>
+                      <div className="space-y-2">
+                        <h3 className="text-3xl font-serif text-[#4a3f35]">¿Agendamos tu sesión?</h3>
+                        <p className="text-[#7a6f64] max-w-xs mx-auto">Elige el momento que mejor te venga para continuar con tu proceso.</p>
+                      </div>
+                      <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-12 h-14 text-lg shadow-lg shadow-[#c17d60]/20">
+                        <Link to="/booking">Reservar Cita <ArrowRight className="ml-2 w-5 h-5" /></Link>
                       </Button>
                     </div>
                   )}
@@ -259,7 +273,7 @@ const Dashboard = () => {
           </Card>
 
           <div className="space-y-6">
-            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem]">
+            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden">
               <Link to="/appointments">
                 <CardContent className="p-8 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
@@ -273,7 +287,7 @@ const Dashboard = () => {
               </Link>
             </Card>
 
-            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem]">
+            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden">
               <Link to="/invoices">
                 <CardContent className="p-8 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
