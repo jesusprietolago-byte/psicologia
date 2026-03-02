@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfDay, addDays, isBefore } from 'date-fns';
+import { format, startOfDay, addDays, isBefore, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarDays, Clock, ArrowLeft, Sparkles, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -63,6 +63,7 @@ const Booking = () => {
     setLoading(true);
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
+      const now = new Date();
       
       const { data: availability } = await supabase
         .from('availability')
@@ -73,7 +74,6 @@ const Booking = () => {
       const startOfDayDate = startOfDay(date);
       const endOfDayDate = addDays(startOfDayDate, 1);
       
-      // IMPORTANTE: Filtramos por cualquier cita que no esté cancelada (incluye pendientes)
       const { data: appointments } = await supabase
         .from('appointments')
         .select('start_time')
@@ -87,6 +87,12 @@ const Booking = () => {
         const [h, m] = avail.start_time.split(':').map(Number);
         slotStart.setHours(h, m, 0, 0);
 
+        // 1. Verificar si el hueco ya ha pasado (si es hoy)
+        if (isToday(date) && isBefore(slotStart, now)) {
+          return; // Saltamos este hueco porque ya pasó
+        }
+
+        // 2. Verificar si ya está reservado
         const isBooked = appointments?.some(app => 
           new Date(app.start_time).getTime() === slotStart.getTime()
         );
@@ -179,7 +185,7 @@ const Booking = () => {
                     </Button>
                   ))}
                 </div>
-              ) : <p className="text-center py-12 text-[#7a6f64]">No hay horarios disponibles.</p>}
+              ) : <p className="text-center py-12 text-[#7a6f64]">No hay horarios disponibles para hoy.</p>}
               {selectedSlot && <Button onClick={handleBooking} className="w-full mt-6 bg-[#b5b891] hover:bg-[#a4a77d] text-white h-14 rounded-full text-lg" disabled={loading}>{loading ? <Loader2 className="animate-spin" /> : <><Sparkles className="w-5 h-5 mr-2" /> Confirmar Reserva</>}</Button>}
             </CardContent>
           </Card>

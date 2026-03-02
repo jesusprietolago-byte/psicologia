@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { format, startOfDay, isBefore } from 'date-fns';
+import { format, startOfDay, isBefore, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { CalendarPlus, Clock, Loader2, Sparkles } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
@@ -34,6 +34,7 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
     setLoading(true);
     try {
       const dateStr = format(date, 'yyyy-MM-dd');
+      const now = new Date();
       
       // 1. Obtener disponibilidad configurada
       const { data: availability } = await supabase
@@ -42,7 +43,7 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
         .eq('date', dateStr)
         .eq('is_active', true);
 
-      // 2. Obtener citas ya reservadas (incluyendo las pendientes de confirmación)
+      // 2. Obtener citas ya reservadas
       const { data: appointments } = await supabase
         .from('appointments')
         .select('start_time')
@@ -55,6 +56,11 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
         const slotStart = new Date(date);
         const [h, m] = avail.start_time.split(':').map(Number);
         slotStart.setHours(h, m, 0, 0);
+
+        // Filtrar si el hueco ya ha pasado hoy
+        if (isToday(date) && isBefore(slotStart, now)) {
+          return;
+        }
 
         const isBooked = appointments?.some(app => 
           new Date(app.start_time).getTime() === slotStart.getTime()
@@ -90,7 +96,7 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
           patient_id: patientId,
           start_time: selectedSlot.startDate.toISOString(),
           end_time: selectedSlot.endDate.toISOString(),
-          status: 'PENDING_CONFIRMATION' // Estado clave para el flujo de aprobación
+          status: 'PENDING_CONFIRMATION'
         });
 
       if (error) throw error;
@@ -149,7 +155,7 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
                   </Button>
                 ))
               ) : (
-                <p className="text-center py-12 text-[#7a6f64] italic">No hay disponibilidad configurada.</p>
+                <p className="text-center py-12 text-[#7a6f64] italic">No hay disponibilidad para las horas restantes de hoy.</p>
               )}
             </div>
             {selectedSlot && (
