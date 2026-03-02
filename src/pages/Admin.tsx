@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
+import AdminBookingDialog from '@/components/AdminBookingDialog';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -87,7 +88,7 @@ const Admin = () => {
     const { data, error } = await supabase
       .from('appointments')
       .select('*, profiles(full_name, email)')
-      .eq('status', 'SCHEDULED')
+      .in('status', ['SCHEDULED', 'PENDING_CONFIRMATION'])
       .order('start_time', { ascending: true });
     
     if (error) throw error;
@@ -131,9 +132,6 @@ const Admin = () => {
     setActionError(prev => ({ ...prev, [admission.id]: null }));
 
     try {
-      console.log(`[Admin] Procesando admisión ${admission.id} con email:`, admission.email);
-
-      // 1. Actualizar estado de admisión
       const { error: updateError } = await supabase
         .from('admissions')
         .update({ status: status })
@@ -142,53 +140,29 @@ const Admin = () => {
       if (updateError) throw updateError;
 
       if (status === 'APPROVED') {
-        // 2. Asegurar rol de paciente
         await supabase
           .from('profiles')
           .update({ role: 'patient' })
           .eq('id', admission.patient_id);
 
-        // 3. Notificar enviando un Magic Link
         try {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/notify-approval`;
-          const response = await fetch(functionUrl, {
+          await fetch(functionUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
             },
-            body: JSON.stringify({ 
-              email: admission.email,
-              admissionId: admission.id 
-            })
+            body: JSON.stringify({ email: admission.email })
           });
-
-          console.log(`[Admin] Respuesta de la función para ${admission.email}:`, response);
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error(`[Admin] Error en la función para ${admission.email}:`, errorData);
-            throw new Error(errorData.error || "Error al enviar el email");
-          }
-
-          const result = await response.json();
-          console.log(`[Admin] Éxito para ${admission.email}:`, result);
-
           setActionStatus(prev => ({ ...prev, [admission.id]: 'success' }));
-          showSuccess("Paciente aprobado. Se ha enviado un email de acceso al paciente.");
-        } catch (emailError: any) {
-          console.error(`[Admin] Error enviando email a ${admission.email}:`, emailError);
-          setActionError(prev => ({ ...prev, [admission.id]: emailError.message }));
-          setActionStatus(prev => ({ ...prev, [admission.id]: 'error' }));
-          showError("Paciente aprobado, pero no se pudo enviar el email de notificación. El paciente puede acceder manualmente desde /login.");
+          showSuccess("Paciente aprobado y notificado.");
+        } catch (e) {
+          showError("Aprobado, pero falló el email.");
         }
-      } else {
-        showSuccess("Solicitud rechazada.");
       }
-      
       await fetchAllData();
     } catch (error: any) {
-      console.error(`[Admin] Error general en ${admission.id}:`, error);
       showError(error.message);
     } finally {
       setActionLoading(null);
@@ -238,7 +212,6 @@ const Admin = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Pestaña de Citas */}
           <TabsContent value="appointments" className="space-y-6">
             <div className="grid grid-cols-1 gap-6">
               {appointments.length > 0 ? (
@@ -264,17 +237,24 @@ const Admin = () => {
                             </div>
                             <div className="flex items-center text-[#7a6f64]">
                               <Clock className="w-4 h-4 mr-3 opacity-50" />
-                              {format(new Date(apt.start_time), 'HH:mm')} - {format(new Date(apt.end_time), 'HH:mm')}
+                              {format(new Date(apt.start_time), 'HH:mm')}
                             </div>
                           </div>
 
                           <div className="flex items-center space-x-4">
-                            <Badge className="bg-[#b5b891]/20 text-[#6b6e4d] border-none px-4 py-1.5 rounded-full">Confirmada</Badge>
-                            <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8 h-12">
-                              <Link to={`/session/${apt.id}`}>
-                                <Video className="w-4 h-4 mr-2" /> Unirse
-                              </Link>
-                            </Button>
+                            <Badge className={cn(
+                              "px-4 py-1.5 rounded-full border-none",
+                              apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : "bg-[#b5b891]/20 text-[#6b6e4d]"
+                            )}>
+                              {apt.status === 'PENDING_CONFIRMATION' ? 'Esperando Paciente' : 'Confirmada'}
+                            </Badge>
+                            {apt.status === 'SCHEDULED' && (
+                              <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8 h-12">
+                                <Link to={`/session/${apt.id}`}>
+                                  <Video className="w-4 h-4 mr-2" /> Unirse
+                                </Link>
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -290,13 +270,19 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          {/* Pestaña de Pacientes */}
           <TabsContent value="patients" className="space-y-8">
             {selectedPatient ? (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <Button variant="ghost" onClick={() => setSelectedPatient(null)} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
-                  <ArrowLeft className="w-4 h-4 mr-2" /> Volver al listado
-                </Button>
+                <div className="flex justify-between items-center">
+                  <Button variant="ghost" onClick={() => setSelectedPatient(null)} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+                    <ArrowLeft className="w-4 h-4 mr-2" /> Volver al listado
+                  </Button>
+                  <AdminBookingDialog 
+                    patientId={selectedPatient.id} 
+                    patientName={selectedPatient.full_name} 
+                    onSuccess={() => fetchPatientDetails(selectedPatient)}
+                  />
+                </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
@@ -319,20 +305,6 @@ const Admin = () => {
                             <p className="text-[#4a3f35] bg-[#fdfaf6] p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
                               {selectedPatient.admission.reason_for_consultation}
                             </p>
-                          </div>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5]">
-                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Terapia previa</Label>
-                              <Badge variant={selectedPatient.admission.previous_therapy ? "default" : "secondary"} className={selectedPatient.admission.previous_therapy ? "bg-[#c17d60]" : ""}>
-                                {selectedPatient.admission.previous_therapy ? 'Sí' : 'No'}
-                              </Badge>
-                            </div>
-                            <div className="p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5]">
-                              <Label className="text-[10px] uppercase text-[#7a6f64] block mb-2 font-bold">Menor de edad</Label>
-                              <Badge variant={selectedPatient.admission.is_minor ? "destructive" : "secondary"}>
-                                {selectedPatient.admission.is_minor ? 'Sí' : 'No'}
-                              </Badge>
-                            </div>
                           </div>
                         </>
                       ) : (
@@ -364,17 +336,20 @@ const Admin = () => {
                                     {format(new Date(apt.start_time), 'PPP', { locale: es })}
                                   </p>
                                   <p className="text-sm text-[#7a6f64]">
-                                    {format(new Date(apt.start_time), 'HH:mm')} - {format(new Date(apt.end_time), 'HH:mm')}
+                                    {format(new Date(apt.start_time), 'HH:mm')}
                                   </p>
                                 </div>
                               </div>
-                              <Badge variant={isPast(new Date(apt.start_time)) ? "secondary" : "default"} className={!isPast(new Date(apt.start_time)) ? "bg-[#c17d60]" : ""}>
-                                {isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
+                              <Badge variant="secondary" className={cn(
+                                "rounded-full px-4",
+                                apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : ""
+                              )}>
+                                {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
                               </Badge>
                             </div>
                           ))
                         ) : (
-                          <p className="text-center py-12 text-[#7a6f64]">No hay citas registradas para este paciente.</p>
+                          <p className="text-center py-12 text-[#7a6f64]">No hay citas registradas.</p>
                         )}
                       </div>
                     </CardContent>
@@ -421,7 +396,6 @@ const Admin = () => {
             )}
           </TabsContent>
 
-          {/* Pestaña de Admisiones */}
           <TabsContent value="admissions" className="space-y-8">
             <div className="grid grid-cols-1 gap-8">
               {admissions.length > 0 ? (
@@ -448,72 +422,15 @@ const Admin = () => {
                             disabled={actionLoading === adm.id}
                             className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12"
                           >
-                            {actionLoading === adm.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <>
-                                <Check className="w-4 h-4 mr-2" /> Aprobar y Notificar
-                              </>
-                            )}
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            onClick={() => handleAdmission(adm, 'REJECTED')} 
-                            disabled={actionLoading === adm.id}
-                            className="flex-1 md:flex-none text-red-500 border-red-100 hover:bg-red-50 rounded-full px-8 h-12"
-                          >
-                            <X className="w-4 h-4 mr-2" /> Rechazar
+                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
                           </Button>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-10 space-y-10">
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-                        <div className="space-y-4">
-                          <Label className="text-[#c17d60] flex items-center text-xs uppercase tracking-widest font-bold">
-                            <MessageSquare className="w-4 h-4 mr-2" /> Motivo de Consulta
-                          </Label>
-                          <p className="text-[#4a3f35] text-lg leading-relaxed bg-[#fdfaf6] p-6 rounded-[2rem] border border-[#e8e1d5]">
-                            {adm.reason_for_consultation}
-                          </p>
-                        </div>
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
-                            <span className="text-[#4a3f35] font-medium flex items-center"><History className="w-5 h-5 mr-3 text-[#c17d60]" /> Terapia previa</span>
-                            <Badge variant={adm.previous_therapy ? "default" : "secondary"} className={adm.previous_therapy ? "bg-[#c17d60]" : ""}>{adm.previous_therapy ? 'Sí' : 'No'}</Badge>
-                          </div>
-                          <div className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5]">
-                            <span className="text-[#4a3f35] font-medium flex items-center"><Baby className="w-5 h-5 mr-3 text-[#b5b891]" /> Menor de edad</span>
-                            <Badge variant={adm.is_minor ? "destructive" : "secondary"}>{adm.is_minor ? 'Sí' : 'No'}</Badge>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Indicador de estado del envío */}
-                      {actionStatus[adm.id] && (
-                        <div className="flex items-center justify-center p-4 bg-white rounded-[2rem] border border-[#e8e1d5]">
-                          {actionStatus[adm.id] === 'success' ? (
-                            <div className="flex items-center text-green-600">
-                              <CheckCircle className="w-5 h-5 mr-2" />
-                              <span className="font-medium">Email enviado correctamente</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center text-red-600">
-                              <AlertCircle className="w-5 h-5 mr-2" />
-                              <span className="font-medium">Error al enviar el email</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Mensaje de error detallado */}
-                      {actionError[adm.id] && (
-                        <div className="p-4 bg-red-50 border border-red-200 rounded-[2rem]">
-                          <p className="text-red-700 text-sm">
-                            <strong>Error:</strong> {actionError[adm.id]}
-                          </p>
-                        </div>
-                      )}
+                    <CardContent className="p-10">
+                      <p className="text-[#4a3f35] text-lg leading-relaxed bg-[#fdfaf6] p-6 rounded-[2rem] border border-[#e8e1d5]">
+                        {adm.reason_for_consultation}
+                      </p>
                     </CardContent>
                   </Card>
                 ))
@@ -526,7 +443,6 @@ const Admin = () => {
             </div>
           </TabsContent>
 
-          {/* Pestaña de Disponibilidad */}
           <TabsContent value="availability">
             <AvailabilityManager />
           </TabsContent>
