@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar } from '@/components/ui/calendar';
 import { format, startOfDay, addDays, isBefore } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CalendarDays, Clock, ArrowLeft, Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { CalendarDays, Clock, ArrowLeft, Sparkles, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { showSuccess, showError } from '@/utils/toast';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,8 @@ const Booking = () => {
   const [loading, setLoading] = useState(true);
   const [checkingAdmission, setCheckingAdmission] = useState(true);
   const [admissionStatus, setAdmissionStatus] = useState<string | null>(null);
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   useEffect(() => {
     if (!authLoading) {
@@ -130,6 +132,8 @@ const Booking = () => {
   const handleBooking = async () => {
     if (!selectedSlot || !user) return;
     setLoading(true);
+    setEmailSending(false);
+    setEmailSent(false);
 
     try {
       // 1. Crear la cita
@@ -165,12 +169,46 @@ const Booking = () => {
         console.error("Error creando sala de video, se podrá crear más tarde:", e);
       }
 
-      showSuccess('Cita reservada correctamente. ¡Te esperamos!');
+      // 3. Enviar correo de confirmación con ICS adjunto
+      setEmailSending(true);
+      try {
+        const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/send-appointment-notification`;
+        const response = await fetch(functionUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({
+            email: user.email,
+            fullName: user.user_metadata?.full_name || 'Paciente',
+            appointment: {
+              id: appointment.id,
+              start_time: appointment.start_time,
+              end_time: appointment.end_time
+            }
+          })
+        });
+
+        if (response.ok) {
+          setEmailSent(true);
+          showSuccess('Cita reservada correctamente. ¡Te hemos enviado un correo con los detalles!');
+        } else {
+          const errorData = await response.json();
+          console.error("Error enviando correo:", errorData);
+          showError("Cita reservada, pero no se pudo enviar el correo de confirmación.");
+        }
+      } catch (e) {
+        console.error("Error enviando correo:", e);
+        showError("Cita reservada, pero no se pudo enviar el correo de confirmación.");
+      }
+
       navigate('/dashboard');
     } catch (error: any) {
       showError("No se pudo completar la reserva: " + error.message);
     } finally {
       setLoading(false);
+      setEmailSending(false);
     }
   };
 
@@ -253,13 +291,24 @@ const Booking = () => {
               )}
 
               {selectedSlot && (
-                <Button 
-                  onClick={handleBooking} 
-                  className="w-full mt-8 bg-[#b5b891] hover:bg-[#a4a77d] text-white h-14 rounded-full shadow-lg shadow-[#b5b891]/20 text-lg"
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Sparkles className="w-5 h-5 mr-2" /> Confirmar Reserva</>}
-                </Button>
+                <div className="space-y-4">
+                  <Button 
+                    onClick={handleBooking} 
+                    className="w-full bg-[#b5b891] hover:bg-[#a4a77d] text-white h-14 rounded-full shadow-lg shadow-[#b5b891]/20 text-lg"
+                    disabled={loading || emailSending}
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 
+                     emailSending ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : 
+                     <><Sparkles className="w-5 h-5 mr-2" /> Confirmar Reserva</>}
+                  </Button>
+                  
+                  {emailSent && (
+                    <div className="flex items-center justify-center p-3 bg-green-50 border border-green-200 rounded-xl">
+                      <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
+                      <span className="text-green-700 text-sm font-medium">¡Correo de confirmación enviado!</span>
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
