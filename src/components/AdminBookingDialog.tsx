@@ -36,14 +36,12 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
       const dateStr = format(date, 'yyyy-MM-dd');
       const now = new Date();
       
-      // 1. Obtener disponibilidad configurada
       const { data: availability } = await supabase
         .from('availability')
         .select('*')
         .eq('date', dateStr)
         .eq('is_active', true);
 
-      // 2. Obtener citas ya reservadas
       const { data: appointments } = await supabase
         .from('appointments')
         .select('start_time')
@@ -57,7 +55,10 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
         const [h, m] = avail.start_time.split(':').map(Number);
         slotStart.setHours(h, m, 0, 0);
 
-        // Filtrar si el hueco ya ha pasado hoy
+        const slotEnd = new Date(date);
+        const [eh, em] = avail.end_time.split(':').map(Number);
+        slotEnd.setHours(eh, em, 0, 0);
+
         if (isToday(date) && isBefore(slotStart, now)) {
           return;
         }
@@ -72,7 +73,7 @@ const AdminBookingDialog = ({ patientId, patientName, onSuccess }: AdminBookingD
             start: avail.start_time.slice(0, 5),
             end: avail.end_time.slice(0, 5),
             startDate: slotStart,
-            endDate: new Date(slotStart.getTime() + 3600000) // 1 hora por defecto
+            endDate: slotEnd
           });
         }
       });

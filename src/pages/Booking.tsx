@@ -87,9 +87,13 @@ const Booking = () => {
         const [h, m] = avail.start_time.split(':').map(Number);
         slotStart.setHours(h, m, 0, 0);
 
+        const slotEnd = new Date(date);
+        const [eh, em] = avail.end_time.split(':').map(Number);
+        slotEnd.setHours(eh, em, 0, 0);
+
         // 1. Verificar si el hueco ya ha pasado (si es hoy)
         if (isToday(date) && isBefore(slotStart, now)) {
-          return; // Saltamos este hueco porque ya pasó
+          return;
         }
 
         // 2. Verificar si ya está reservado
@@ -103,7 +107,7 @@ const Booking = () => {
             start: avail.start_time.slice(0, 5),
             end: avail.end_time.slice(0, 5),
             startDate: slotStart,
-            endDate: new Date(slotStart.getTime() + 3600000)
+            endDate: slotEnd
           });
         }
       });
