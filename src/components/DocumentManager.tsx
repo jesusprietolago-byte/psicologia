@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, Trash2, Upload, Loader2, FileIcon, ShieldAlert } from 'lucide-react';
+import { FileText, Download, Trash2, Upload, Loader2, FileIcon, ShieldAlert, Clock } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
