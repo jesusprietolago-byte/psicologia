@@ -287,6 +287,20 @@ const Dashboard = () => {
             </Card>
 
             <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden">
+              <Link to="/documents">
+                <CardContent className="p-8 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="bg-[#fdfaf6] p-4 rounded-2xl group-hover:bg-[#c17d60]/10 transition-colors border border-[#e8e1d5]">
+                      <FileText className="text-[#c17d60] w-6 h-6" />
+                    </div>
+                    <span className="font-serif text-xl text-[#4a3f35]">Mis Documentos</span>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-[#e8e1d5] group-hover:text-[#c17d60] transition-colors" />
+                </CardContent>
+              </Link>
+            </Card>
+
+            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden">
               <Link to="/invoices">
                 <CardContent className="p-8 flex items-center justify-between">
                   <div className="flex items-center space-x-4">

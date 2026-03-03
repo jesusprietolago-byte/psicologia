@@ -14,6 +14,7 @@ import AdmissionForm from "./pages/AdmissionForm";
 import Booking from "./pages/Booking";
 import Appointments from "./pages/Appointments";
 import Invoices from "./pages/Invoices";
+import Documents from "./pages/Documents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,12 @@ const App = () => (
             <Route path="/appointments" element={
               <ProtectedRoute allowedRole="patient">
                 <Appointments />
+              </ProtectedRoute>
+            } />
+
+            <Route path="/documents" element={
+              <ProtectedRoute allowedRole="patient">
+                <Documents />
               </ProtectedRoute>
             } />
 

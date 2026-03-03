@@ -29,11 +29,13 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
-  CheckCircle
+  CheckCircle,
+  FileText
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
 import AdminBookingDialog from '@/components/AdminBookingDialog';
+import DocumentManager from '@/components/DocumentManager';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,8 +50,6 @@ const Admin = () => {
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [actionStatus, setActionStatus] = useState<{[key: string]: 'success' | 'error' | null}>({});
-  const [actionError, setActionError] = useState<{[key: string]: string | null}>({});
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
@@ -128,8 +128,6 @@ const Admin = () => {
 
   const handleAdmission = async (admission: any, status: 'APPROVED' | 'REJECTED') => {
     setActionLoading(admission.id);
-    setActionStatus(prev => ({ ...prev, [admission.id]: null }));
-    setActionError(prev => ({ ...prev, [admission.id]: null }));
 
     try {
       const { error: updateError } = await supabase
@@ -155,7 +153,6 @@ const Admin = () => {
             },
             body: JSON.stringify({ email: admission.email })
           });
-          setActionStatus(prev => ({ ...prev, [admission.id]: 'success' }));
           showSuccess("Paciente aprobado y notificado.");
         } catch (e) {
           showError("Aprobado, pero falló el email.");
@@ -285,33 +282,37 @@ const Admin = () => {
                 </div>
                 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
-                    <CardHeader className="border-b border-[#fdfaf6] p-8">
-                      <div className="flex items-center space-x-6">
-                        <div className="w-20 h-20 bg-[#c17d60]/10 rounded-[2rem] flex items-center justify-center text-[#c17d60] text-3xl font-bold">
-                          {selectedPatient.full_name?.charAt(0)}
-                        </div>
-                        <div>
-                          <CardTitle className="text-2xl font-serif text-[#4a3f35]">{selectedPatient.full_name}</CardTitle>
-                          <CardDescription className="text-[#7a6f64]">{selectedPatient.email}</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-8 space-y-8">
-                      {selectedPatient.admission ? (
-                        <>
-                          <div className="space-y-3">
-                            <Label className="text-xs uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
-                            <p className="text-[#4a3f35] bg-[#fdfaf6] p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
-                              {selectedPatient.admission.reason_for_consultation}
-                            </p>
+                  <div className="space-y-8">
+                    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
+                      <CardHeader className="border-b border-[#fdfaf6] p-8">
+                        <div className="flex items-center space-x-6">
+                          <div className="w-20 h-20 bg-[#c17d60]/10 rounded-[2rem] flex items-center justify-center text-[#c17d60] text-3xl font-bold">
+                            {selectedPatient.full_name?.charAt(0)}
                           </div>
-                        </>
-                      ) : (
-                        <p className="text-[#7a6f64] italic">No hay formulario de admisión registrado.</p>
-                      )}
-                    </CardContent>
-                  </Card>
+                          <div>
+                            <CardTitle className="text-2xl font-serif text-[#4a3f35]">{selectedPatient.full_name}</CardTitle>
+                            <CardDescription className="text-[#7a6f64]">{selectedPatient.email}</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-8 space-y-8">
+                        {selectedPatient.admission ? (
+                          <>
+                            <div className="space-y-3">
+                              <Label className="text-xs uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
+                              <p className="text-[#4a3f35] bg-[#fdfaf6] p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
+                                {selectedPatient.admission.reason_for_consultation}
+                              </p>
+                            </div>
+                          </>
+                        ) : (
+                          <p className="text-[#7a6f64] italic">No hay formulario de admisión registrado.</p>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <DocumentManager patientId={selectedPatient.id} isAdmin={true} />
+                  </div>
 
                   <Card className="lg:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
                     <CardHeader className="p-8">
