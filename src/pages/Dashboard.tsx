@@ -22,7 +22,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -45,7 +45,6 @@ const Dashboard = () => {
   const fetchPatientData = async () => {
     setRefreshing(true);
     try {
-      // 1. Estado de admisión
       const { data: admissionData } = await supabase
         .from('admissions')
         .select('status')
@@ -57,13 +56,13 @@ const Dashboard = () => {
       setAdmissionStatus(admissionData?.status || 'NOT_STARTED');
 
       if (admissionData?.status === 'APPROVED') {
-        // 2. Buscar cita confirmada (SCHEDULED)
+        // 2. Buscar cita confirmada (SCHEDULED) - Solo futuras o en curso
         const { data: appointmentData } = await supabase
           .from('appointments')
           .select('*')
           .eq('patient_id', user?.id)
           .eq('status', 'SCHEDULED')
-          .gte('start_time', new Date().toISOString())
+          .gte('end_time', new Date().toISOString()) // Que no haya terminado todavía
           .order('start_time', { ascending: true })
           .limit(1)
           .maybeSingle();
@@ -76,7 +75,6 @@ const Dashboard = () => {
           .select('*')
           .eq('patient_id', user?.id)
           .eq('status', 'PENDING_CONFIRMATION')
-          .gte('start_time', new Date().toISOString())
           .order('start_time', { ascending: true })
           .limit(1)
           .maybeSingle();
@@ -103,7 +101,6 @@ const Dashboard = () => {
 
       if (status === 'SCHEDULED') {
         showSuccess("¡Cita confirmada! Te esperamos.");
-        // Intentar crear sala de video automáticamente al confirmar
         try {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
           const response = await fetch(functionUrl, {
@@ -124,7 +121,6 @@ const Dashboard = () => {
         showSuccess("Cita rechazada correctamente.");
       }
       
-      // Recargar datos para actualizar la UI
       await fetchPatientData();
     } catch (error: any) {
       showError(error.message);
@@ -201,7 +197,6 @@ const Dashboard = () => {
               {admissionStatus === 'APPROVED' && (
                 <div className="space-y-8">
                   
-                  {/* PRIORIDAD 1: Cita propuesta por Laura */}
                   {pendingAppointment ? (
                     <div className="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-200 space-y-6 animate-in fade-in slide-in-from-top-4">
                       <div className="flex items-start space-x-5">
@@ -211,7 +206,10 @@ const Dashboard = () => {
                         <div className="space-y-1">
                           <h3 className="text-2xl font-serif text-[#4a3f35]">Laura te ha propuesto una cita</h3>
                           <p className="text-amber-800 font-medium text-lg">
-                            {format(new Date(pendingAppointment.start_time), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                            {format(new Date(pendingAppointment.start_time), "EEEE d 'de' MMMM", { locale: es })}
+                          </p>
+                          <p className="text-amber-700 font-medium">
+                            {format(new Date(pendingAppointment.start_time), "HH:mm")} — {format(new Date(pendingAppointment.end_time), "HH:mm")}
                           </p>
                           <p className="text-amber-700/70 text-sm">Por favor, confirma si puedes asistir o rechaza para liberar el hueco.</p>
                         </div>
@@ -235,7 +233,6 @@ const Dashboard = () => {
                       </div>
                     </div>
                   ) : nextAppointment ? (
-                    /* PRIORIDAD 2: Próxima cita ya confirmada */
                     <div className="bg-[#b5b891]/10 p-8 rounded-[2.5rem] border border-[#b5b891]/30 flex flex-col sm:flex-row justify-between items-center gap-8">
                       <div className="flex items-center space-x-6">
                         <div className="bg-white p-5 rounded-3xl shadow-sm border border-[#b5b891]/20">
@@ -244,7 +241,10 @@ const Dashboard = () => {
                         <div>
                           <h3 className="text-2xl font-serif text-[#4a3f35]">Próxima Sesión</h3>
                           <p className="text-[#6b6e4d] font-medium text-lg mt-1">
-                            {format(new Date(nextAppointment.start_time), "EEEE d 'de' MMMM 'a las' HH:mm", { locale: es })}
+                            {format(new Date(nextAppointment.start_time), "EEEE d 'de' MMMM", { locale: es })}
+                          </p>
+                          <p className="text-[#6b6e4d] font-medium">
+                            {format(new Date(nextAppointment.start_time), "HH:mm")} — {format(new Date(nextAppointment.end_time), "HH:mm")}
                           </p>
                         </div>
                       </div>
@@ -253,7 +253,6 @@ const Dashboard = () => {
                       </Button>
                     </div>
                   ) : (
-                    /* PRIORIDAD 3: No hay nada, permitir reservar */
                     <div className="py-12 text-center space-y-8 bg-[#fdfaf6]/50 rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
                       <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center mx-auto shadow-sm border border-[#e8e1d5]">
                         <Calendar className="text-[#c17d60] w-10 h-10" />
