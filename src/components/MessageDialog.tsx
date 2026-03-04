@@ -34,9 +34,9 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
 
   useEffect(() => {
     if (otherUserId && user) {
+      console.log(`[Chat] Iniciando chat con: ${otherUserName} (${otherUserId})`);
       fetchMessages();
       
-      // Suscripción en tiempo real mejorada
       const channel = supabase
         .channel(`chat:${user.id}:${otherUserId}`)
         .on(
@@ -44,18 +44,22 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
           { 
             event: 'INSERT', 
             schema: 'public', 
-            table: 'messages',
-            filter: `receiver_id=eq.${user.id}` // Solo nos interesan los que recibimos nosotros
+            table: 'messages'
           },
           (payload) => {
-            if (payload.new.sender_id === otherUserId) {
+            console.log("[Chat] Nuevo mensaje detectado en Realtime:", payload);
+            // Solo añadir si el mensaje es para nosotros y viene de la persona correcta
+            if (payload.new.receiver_id === user.id && payload.new.sender_id === otherUserId) {
               setMessages((prev) => [...prev, payload.new]);
             }
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log(`[Chat] Estado de la suscripción Realtime: ${status}`);
+        });
 
       return () => {
+        console.log("[Chat] Cerrando canal de chat");
         supabase.removeChannel(channel);
       };
     }
@@ -75,7 +79,12 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
       .or(`and(sender_id.eq.${user?.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user?.id})`)
       .order('created_at', { ascending: true });
 
-    if (!error) setMessages(data || []);
+    if (error) {
+      console.error("[Chat] Error al cargar mensajes:", error);
+    } else {
+      console.log(`[Chat] ${data?.length || 0} mensajes cargados`);
+      setMessages(data || []);
+    }
     setLoading(false);
   };
 
@@ -84,20 +93,22 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
     if (!newMessage.trim() || !user) return;
 
     const content = newMessage.trim();
-    setNewMessage(''); // Limpiamos el input inmediatamente para mejor UX
+    setNewMessage(''); 
     setSending(true);
 
+    console.log("[Chat] Enviando mensaje...");
     const { data, error } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: otherUserId,
       content: content
     }).select().single();
 
-    if (!error && data) {
-      // Añadimos el mensaje localmente para que sea instantáneo
+    if (error) {
+      console.error("[Chat] Error al enviar mensaje:", error);
+      setNewMessage(content); // Devolvemos el texto al input si falla
+    } else if (data) {
+      console.log("[Chat] Mensaje enviado con éxito");
       setMessages((prev) => [...prev, data]);
-    } else if (error) {
-      console.error("Error enviando mensaje:", error);
     }
     setSending(false);
   };
