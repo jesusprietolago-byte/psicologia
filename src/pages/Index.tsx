@@ -1,8 +1,58 @@
+"use client";
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { Heart, Sparkles, Leaf, Coffee } from "lucide-react";
+import { Heart, Sparkles, Leaf, Coffee, User, Loader2 } from "lucide-react";
+
+const iconMap: Record<string, any> = {
+  Sparkles: <Sparkles />,
+  Heart: <Heart />,
+  Leaf: <Leaf />,
+  Coffee: <Coffee />,
+  User: <User />
+};
 
 const Index = () => {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  const [services, setServices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadContent = async () => {
+      try {
+        const [settingsRes, servicesRes] = await Promise.all([
+          supabase.from('site_settings').select('key, value'),
+          supabase.from('services').select('*').eq('is_active', true).order('created_at')
+        ]);
+
+        if (settingsRes.data) {
+          const settingsMap = settingsRes.data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+          setSettings(settingsMap);
+        }
+        
+        if (servicesRes.data) {
+          setServices(servicesRes.data);
+        }
+      } catch (error) {
+        console.error("Error loading content:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadContent();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]">
+        <Loader2 className="w-10 h-10 animate-spin text-[#c17d60]" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#fdfaf6] font-sans">
       {/* Navigation */}
@@ -11,7 +61,9 @@ const Index = () => {
           <div className="w-10 h-10 bg-[#c17d60] rounded-full flex items-center justify-center">
             <Leaf className="text-white w-6 h-6" />
           </div>
-          <span className="text-2xl font-serif font-medium text-[#4a3f35]">Alma Psychology</span>
+          <span className="text-2xl font-serif font-medium text-[#4a3f35]">
+            {settings.site_name || 'Alma Psychology'}
+          </span>
         </div>
         <div className="flex items-center space-x-8">
           <Link to="/login" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Acceso Pacientes</Link>
@@ -27,12 +79,11 @@ const Index = () => {
           <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-[#b5b891]/20 text-[#6b6e4d] text-sm font-medium">
             <Sparkles className="w-4 h-4 mr-2" /> Tu espacio de calma y bienestar
           </div>
-          <h1 className="text-6xl md:text-7xl font-serif text-[#4a3f35] leading-[1.1]">
-            L. P. L. <br />
-            <span className="text-[#c17d60] italic">Psicología Cercana</span>
+          <h1 className="text-6xl md:text-7xl font-serif text-[#4a3f35] leading-[1.1] whitespace-pre-line">
+            {settings.hero_title || 'L. P. L. \nPsicología Cercana'}
           </h1>
           <p className="text-xl text-[#7a6f64] leading-relaxed max-w-lg">
-            Un refugio seguro donde trabajar en tu salud mental con empatía, profesionalidad y calidez humana.
+            {settings.hero_description || 'Un refugio seguro donde trabajar en tu salud mental con empatía, profesionalidad y calidez humana.'}
           </p>
           <div className="flex flex-col sm:flex-row gap-4">
             <Button asChild size="lg" className="bg-[#c17d60] hover:bg-[#a66a51] text-white px-10 rounded-full text-lg h-14 shadow-lg shadow-[#c17d60]/20">
@@ -47,7 +98,7 @@ const Index = () => {
         <div className="relative">
           <div className="aspect-[4/5] rounded-[3rem] overflow-hidden shadow-2xl rotate-2 hover:rotate-0 transition-transform duration-700">
             <img 
-              src="/hero-image.jpeg" 
+              src={settings.hero_image_url || "/hero-image.jpeg"} 
               alt="Reflexiones del proceso terapéutico" 
               className="w-full h-full object-cover"
             />
@@ -64,17 +115,18 @@ const Index = () => {
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { title: "Ansiedad", icon: <Sparkles />, desc: "Herramientas para gestionar el estrés y encontrar la paz interior." },
-              { title: "Depresión", icon: <Heart />, desc: "Acompañamiento empático para recuperar la ilusión y el bienestar." },
-              { title: "Autoestima", icon: <Leaf />, desc: "Fortalece tu relación contigo mismo y descubre tu potencial." }
-            ].map((item, i) => (
+            {services.map((service, i) => (
               <div key={i} className="bg-white p-10 rounded-[2.5rem] shadow-sm hover:shadow-md transition-shadow text-center space-y-6 border border-[#e8e1d5]/50">
                 <div className="w-16 h-16 bg-[#fdfaf6] rounded-2xl flex items-center justify-center mx-auto text-[#c17d60] border border-[#e8e1d5]">
-                  {item.icon}
+                  {iconMap[service.icon_name] || <Sparkles />}
                 </div>
-                <h3 className="text-2xl font-serif text-[#4a3f35]">{item.title}</h3>
-                <p className="text-[#7a6f64] leading-relaxed">{item.desc}</p>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-serif text-[#4a3f35]">{service.title}</h3>
+                  {service.price && (
+                    <p className="text-[#c17d60] font-medium">{service.price}€ / sesión</p>
+                  )}
+                </div>
+                <p className="text-[#7a6f64] leading-relaxed">{service.description}</p>
               </div>
             ))}
           </div>
@@ -88,7 +140,7 @@ const Index = () => {
             <div className="w-8 h-8 bg-[#c17d60] rounded-full flex items-center justify-center">
               <Leaf className="text-white w-5 h-5" />
             </div>
-            <span className="text-xl font-serif text-[#4a3f35]">Alma Psychology</span>
+            <span className="text-xl font-serif text-[#4a3f35]">{settings.site_name || 'Alma Psychology'}</span>
           </div>
           <p className="text-[#7a6f64] text-sm">© 2024 Consulta de Psicología. Tu bienestar es nuestra prioridad.</p>
         </div>
