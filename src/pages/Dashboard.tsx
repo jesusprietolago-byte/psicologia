@@ -22,7 +22,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
-import { format } from 'date-bottom';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
