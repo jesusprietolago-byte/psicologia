@@ -15,6 +15,7 @@ import Booking from "./pages/Booking";
 import Appointments from "./pages/Appointments";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
+import Blog from "./pages/Blog";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/login" element={<Login />} />
             <Route path="/admission" element={<AdmissionForm />} />
+            <Route path="/blog" element={<Blog />} />
             
             {/* Rutas de Paciente */}
             <Route path="/dashboard" element={

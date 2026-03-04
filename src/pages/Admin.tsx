@@ -28,7 +28,8 @@ import {
   XCircle,
   MessageCircle,
   Settings,
-  Layout
+  Layout,
+  FileText
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -37,6 +38,7 @@ import DocumentManager from '@/components/DocumentManager';
 import ClinicalNoteDialog from '@/components/ClinicalNoteDialog';
 import MessageDialog from '@/components/MessageDialog';
 import VisualEditor from '@/components/VisualEditor';
+import BlogManager from '@/components/BlogManager';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -233,6 +235,9 @@ const Admin = () => {
               </TabsTrigger>
               <TabsTrigger value="content" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
                 <Layout className="w-4 h-4 mr-2" /> Editar Web
+              </TabsTrigger>
+              <TabsTrigger value="blog" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
+                <FileText className="w-4 h-4 mr-2" /> Blog
               </TabsTrigger>
             </TabsList>
           </div>
@@ -498,6 +503,10 @@ const Admin = () => {
 
           <TabsContent value="content">
             <VisualEditor />
+          </TabsContent>
+
+          <TabsContent value="blog">
+            <BlogManager />
           </TabsContent>
         </Tabs>
       </main>
