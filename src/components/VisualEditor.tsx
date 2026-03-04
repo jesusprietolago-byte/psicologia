@@ -20,8 +20,10 @@ import {
   Trash2,
   Check,
   Layout,
-  FileText
+  FileText,
+  Files
 } from 'lucide-react';
+import PageManager from './PageManager';
 
 const VisualEditor = () => {
   const [settings, setSettings] = useState<any[]>([]);
@@ -129,6 +131,12 @@ const VisualEditor = () => {
           />
         </div>
       </div>
+
+      {/* GESTIÓN DE PÁGINAS ADICIONALES */}
+      <section className="p-10 border-2 border-dashed border-[#e8e1d5] rounded-[3rem] bg-white/30 relative">
+        <div className="absolute -top-4 left-10 bg-[#4a3f35] text-white px-4 py-1 rounded-full text-xs font-bold uppercase tracking-widest">Estructura de la Web</div>
+        <PageManager />
+      </section>
 
       {/* HERO SECTION */}
       <section className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center border-2 border-dashed border-[#e8e1d5] p-10 rounded-[3rem] bg-white/50 relative">

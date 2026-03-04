@@ -16,6 +16,7 @@ import Appointments from "./pages/Appointments";
 import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
 import Blog from "./pages/Blog";
+import CustomPage from "./pages/CustomPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/admission" element={<AdmissionForm />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/p/:slug" element={<CustomPage />} />
             
             {/* Rutas de Paciente */}
             <Route path="/dashboard" element={

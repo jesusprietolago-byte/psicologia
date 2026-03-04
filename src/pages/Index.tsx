@@ -19,15 +19,17 @@ const Index = () => {
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [services, setServices] = useState<any[]>([]);
   const [sections, setSections] = useState<any[]>([]);
+  const [customPages, setCustomPages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadContent = async () => {
       try {
-        const [settingsRes, servicesRes, sectionsRes] = await Promise.all([
+        const [settingsRes, servicesRes, sectionsRes, pagesRes] = await Promise.all([
           supabase.from('site_settings').select('key, value'),
           supabase.from('services').select('*').eq('is_active', true).order('created_at'),
-          supabase.from('sections').select('*').eq('is_active', true).order('order_index')
+          supabase.from('sections').select('*').eq('is_active', true).order('order_index'),
+          supabase.from('custom_pages').select('*').eq('is_active', true).eq('show_in_nav', true)
         ]);
 
         if (settingsRes.data) {
@@ -36,6 +38,7 @@ const Index = () => {
         }
         setServices(servicesRes.data || []);
         setSections(sectionsRes.data || []);
+        setCustomPages(pagesRes.data || []);
       } catch (error) {
         console.error("Error loading content:", error);
       } finally {
@@ -61,6 +64,13 @@ const Index = () => {
           <span className="text-2xl font-serif font-medium text-[#4a3f35]">{settings.site_name || 'Alma Psychology'}</span>
         </div>
         <div className="flex items-center space-x-8">
+          {/* Páginas Dinámicas */}
+          {customPages.map(page => (
+            <Link key={page.id} to={`/p/${page.slug}`} className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">
+              {page.title}
+            </Link>
+          ))}
+          
           {showBlog && (
             <Link to="/blog" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Blog</Link>
           )}
