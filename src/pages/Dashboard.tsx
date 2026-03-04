@@ -29,8 +29,6 @@ import { showSuccess, showError } from '@/utils/toast';
 import { translateStatus } from '@/utils/translations';
 import MessageDialog from '@/components/MessageDialog';
 
-const ADMIN_ID = "jesusprietolago@gmail.com"; // Usamos el email como referencia para el chat si no tenemos el ID real a mano, pero lo ideal es buscar el ID del admin
-
 const Dashboard = () => {
   const { user, role, signOut } = useAuth();
   const [admissionStatus, setAdmissionStatus] = useState<string | null>(null);
@@ -49,12 +47,18 @@ const Dashboard = () => {
   }, [user, role]);
 
   const fetchAdminProfile = async () => {
-    const { data } = await supabase
+    // Buscamos explícitamente al usuario con rol admin
+    const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name')
       .eq('role', 'admin')
-      .single();
-    if (data) setAdminProfile(data);
+      .maybeSingle();
+    
+    if (data) {
+      setAdminProfile(data);
+    } else if (error) {
+      console.error("Error buscando perfil admin:", error);
+    }
   };
 
   const fetchPatientData = async () => {

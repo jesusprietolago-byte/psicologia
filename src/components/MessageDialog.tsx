@@ -36,17 +36,19 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
     if (otherUserId && user) {
       fetchMessages();
       
-      // Suscripción en tiempo real
+      // Suscripción en tiempo real mejorada
       const channel = supabase
-        .channel('schema-db-changes')
+        .channel(`chat:${user.id}:${otherUserId}`)
         .on(
           'postgres_changes',
-          { event: 'INSERT', schema: 'public', table: 'messages' },
+          { 
+            event: 'INSERT', 
+            schema: 'public', 
+            table: 'messages',
+            filter: `receiver_id=eq.${user.id}` // Solo nos interesan los que recibimos nosotros
+          },
           (payload) => {
-            if (
-              (payload.new.sender_id === user.id && payload.new.receiver_id === otherUserId) ||
-              (payload.new.sender_id === otherUserId && payload.new.receiver_id === user.id)
-            ) {
+            if (payload.new.sender_id === otherUserId) {
               setMessages((prev) => [...prev, payload.new]);
             }
           }
@@ -81,14 +83,22 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
+    const content = newMessage.trim();
+    setNewMessage(''); // Limpiamos el input inmediatamente para mejor UX
     setSending(true);
-    const { error } = await supabase.from('messages').insert({
+
+    const { data, error } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: otherUserId,
-      content: newMessage.trim()
-    });
+      content: content
+    }).select().single();
 
-    if (!error) setNewMessage('');
+    if (!error && data) {
+      // Añadimos el mensaje localmente para que sea instantáneo
+      setMessages((prev) => [...prev, data]);
+    } else if (error) {
+      console.error("Error enviando mensaje:", error);
+    }
     setSending(false);
   };
 
@@ -115,27 +125,33 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
           <div className="space-y-4">
             {loading ? (
               <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#c17d60]" /></div>
-            ) : messages.map((msg) => (
-              <div 
-                key={msg.id} 
-                className={cn(
-                  "flex flex-col max-w-[80%] space-y-1",
-                  msg.sender_id === user?.id ? "ml-auto items-end" : "mr-auto items-start"
-                )}
-              >
-                <div className={cn(
-                  "px-4 py-3 rounded-2xl text-sm shadow-sm",
-                  msg.sender_id === user?.id 
-                    ? "bg-[#c17d60] text-white rounded-tr-none" 
-                    : "bg-white text-[#4a3f35] border border-[#e8e1d5] rounded-tl-none"
-                )}>
-                  {msg.content}
+            ) : messages.length > 0 ? (
+              messages.map((msg) => (
+                <div 
+                  key={msg.id} 
+                  className={cn(
+                    "flex flex-col max-w-[80%] space-y-1",
+                    msg.sender_id === user?.id ? "ml-auto items-end" : "mr-auto items-start"
+                  )}
+                >
+                  <div className={cn(
+                    "px-4 py-3 rounded-2xl text-sm shadow-sm",
+                    msg.sender_id === user?.id 
+                      ? "bg-[#c17d60] text-white rounded-tr-none" 
+                      : "bg-white text-[#4a3f35] border border-[#e8e1d5] rounded-tl-none"
+                  )}>
+                    {msg.content}
+                  </div>
+                  <span className="text-[10px] text-[#7a6f64] px-1">
+                    {format(new Date(msg.created_at), 'HH:mm', { locale: es })}
+                  </span>
                 </div>
-                <span className="text-[10px] text-[#7a6f64] px-1">
-                  {format(new Date(msg.created_at), 'HH:mm', { locale: es })}
-                </span>
+              ))
+            ) : (
+              <div className="text-center py-20 text-[#7a6f64] italic">
+                No hay mensajes todavía. ¡Saluda!
               </div>
-            ))}
+            )}
             <div ref={scrollRef} />
           </div>
         </ScrollArea>
