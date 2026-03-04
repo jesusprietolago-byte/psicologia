@@ -13,10 +13,7 @@ import {
   LogOut, 
   ClipboardList, 
   Check, 
-  X, 
   History, 
-  Baby, 
-  MessageSquare, 
   Calendar, 
   Video,
   Clock,
@@ -27,10 +24,7 @@ import {
   Leaf,
   Mail,
   RefreshCw,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  FileText
+  Loader2
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -175,78 +169,80 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] font-sans">
-      <nav className="bg-white/80 backdrop-blur-md border-b border-[#e8e1d5] px-8 py-5 flex justify-between items-center sticky top-0 z-10">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-[#e8e1d5] px-4 md:px-8 py-4 md:py-5 flex justify-between items-center sticky top-0 z-10">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-[#c17d60] rounded-2xl flex items-center justify-center shadow-lg shadow-[#c17d60]/20">
-            <Leaf className="text-white w-6 h-6" />
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-[#c17d60] rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg shadow-[#c17d60]/20 shrink-0">
+            <Leaf className="text-white w-5 h-5 md:w-6 md:h-6" />
           </div>
-          <h1 className="text-2xl font-serif font-medium text-[#4a3f35]">Panel Profesional</h1>
+          <h1 className="text-lg md:text-2xl font-serif font-medium text-[#4a3f35] truncate">Panel Profesional</h1>
         </div>
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" size="icon" onClick={fetchAllData} className="rounded-full border-[#e8e1d5] text-[#7a6f64]">
+        <div className="flex items-center space-x-2 md:space-x-4">
+          <Button variant="outline" size="icon" onClick={fetchAllData} className="rounded-full border-[#e8e1d5] text-[#7a6f64] h-9 w-9 md:h-10 md:w-10">
             <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
           </Button>
-          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full">
-            <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
+          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full h-9 md:h-10 px-3 md:px-4 text-sm md:text-base">
+            <LogOut className="w-4 h-4 md:mr-2" /> <span className="hidden md:inline">Cerrar Sesión</span>
           </Button>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto p-8">
-        <Tabs defaultValue="appointments" className="space-y-10">
-          <TabsList className="bg-white border border-[#e8e1d5] p-1.5 h-14 rounded-[1.5rem] shadow-sm flex w-fit">
-            <TabsTrigger value="appointments" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all">
-              <Calendar className="w-4 h-4 mr-2" /> Próximas Citas
-            </TabsTrigger>
-            <TabsTrigger value="patients" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all">
-              <UserCircle className="w-4 h-4 mr-2" /> Pacientes
-            </TabsTrigger>
-            <TabsTrigger value="admissions" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all">
-              <ClipboardList className="w-4 h-4 mr-2" /> Admisiones ({admissions.length})
-            </TabsTrigger>
-            <TabsTrigger value="availability" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all">
-              <Clock className="w-4 h-4 mr-2" /> Agenda
-            </TabsTrigger>
-          </TabsList>
+      <main className="max-w-7xl mx-auto p-4 md:p-8">
+        <Tabs defaultValue="appointments" className="space-y-6 md:space-y-10">
+          <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
+            <TabsList className="bg-white border border-[#e8e1d5] p-1 h-12 md:h-14 rounded-2xl md:rounded-[1.5rem] shadow-sm flex w-max md:w-fit">
+              <TabsTrigger value="appointments" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
+                <Calendar className="w-4 h-4 mr-2" /> Próximas
+              </TabsTrigger>
+              <TabsTrigger value="patients" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
+                <UserCircle className="w-4 h-4 mr-2" /> Pacientes
+              </TabsTrigger>
+              <TabsTrigger value="admissions" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
+                <ClipboardList className="w-4 h-4 mr-2" /> Admisiones ({admissions.length})
+              </TabsTrigger>
+              <TabsTrigger value="availability" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
+                <Clock className="w-4 h-4 mr-2" /> Agenda
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <TabsContent value="appointments" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
+            <div className="grid grid-cols-1 gap-4 md:gap-6">
               {appointments.length > 0 ? (
                 appointments.map((apt) => (
-                  <Card key={apt.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all rounded-[2.5rem] overflow-hidden">
-                    <CardContent className="p-8">
-                      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
-                        <div className="flex items-center space-x-6">
-                          <div className="w-16 h-16 bg-[#fdfaf6] border border-[#e8e1d5] rounded-3xl flex items-center justify-center text-[#c17d60] text-xl font-bold">
+                  <Card key={apt.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
+                    <CardContent className="p-6 md:p-8">
+                      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 md:gap-8">
+                        <div className="flex items-center space-x-4 md:space-x-6 min-w-0">
+                          <div className="w-12 h-12 md:w-16 md:h-16 bg-[#fdfaf6] border border-[#e8e1d5] rounded-2xl md:rounded-3xl flex items-center justify-center text-[#c17d60] text-lg md:text-xl font-bold shrink-0">
                             {apt.profiles?.full_name?.charAt(0) || 'P'}
                           </div>
-                          <div>
-                            <h3 className="text-2xl font-serif text-[#4a3f35]">{apt.profiles?.full_name || 'Paciente'}</h3>
-                            <p className="text-[#7a6f64]">{apt.profiles?.email}</p>
+                          <div className="min-w-0">
+                            <h3 className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">{apt.profiles?.full_name || 'Paciente'}</h3>
+                            <p className="text-sm md:text-base text-[#7a6f64] truncate">{apt.profiles?.email}</p>
                           </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-8">
-                          <div className="space-y-2">
-                            <div className="flex items-center text-[#4a3f35] font-medium">
-                              <Calendar className="w-4 h-4 mr-3 text-[#c17d60]" />
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 md:gap-8 w-full lg:w-auto">
+                          <div className="space-y-1">
+                            <div className="flex items-center text-[#4a3f35] font-medium text-sm md:text-base">
+                              <Calendar className="w-4 h-4 mr-2 text-[#c17d60]" />
                               {format(new Date(apt.start_time), 'PPP', { locale: es })}
                             </div>
-                            <div className="flex items-center text-[#7a6f64]">
-                              <Clock className="w-4 h-4 mr-3 opacity-50" />
+                            <div className="flex items-center text-[#7a6f64] text-sm md:text-base">
+                              <Clock className="w-4 h-4 mr-2 opacity-50" />
                               {format(new Date(apt.start_time), 'HH:mm')}
                             </div>
                           </div>
 
-                          <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-3 w-full sm:w-auto">
                             <Badge className={cn(
-                              "px-4 py-1.5 rounded-full border-none",
+                              "px-3 py-1 rounded-full border-none text-xs md:text-sm",
                               apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : "bg-[#b5b891]/20 text-[#6b6e4d]"
                             )}>
-                              {apt.status === 'PENDING_CONFIRMATION' ? 'Esperando Paciente' : 'Confirmada'}
+                              {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : 'Confirmada'}
                             </Badge>
                             {apt.status === 'SCHEDULED' && (
-                              <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8 h-12">
+                              <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-6 h-10 md:h-12 text-sm md:text-base flex-1 sm:flex-none">
                                 <Link to={`/session/${apt.id}`}>
                                   <Video className="w-4 h-4 mr-2" /> Unirse
                                 </Link>
@@ -259,19 +255,19 @@ const Admin = () => {
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
-                  <Calendar className="w-16 h-16 mx-auto mb-6 text-[#e8e1d5]" />
-                  <h3 className="text-2xl font-serif text-[#7a6f64]">No hay citas programadas</h3>
+                <div className="text-center py-16 md:py-24 bg-white rounded-[2.5rem] md:rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+                  <Calendar className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-[#e8e1d5]" />
+                  <h3 className="text-xl md:text-2xl font-serif text-[#7a6f64]">No hay citas programadas</h3>
                 </div>
               )}
             </div>
           </TabsContent>
 
-          <TabsContent value="patients" className="space-y-8">
+          <TabsContent value="patients" className="space-y-6 md:space-y-8">
             {selectedPatient ? (
-              <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex justify-between items-center">
-                  <Button variant="ghost" onClick={() => setSelectedPatient(null)} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+              <div className="space-y-6 md:space-y-8 animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <Button variant="ghost" onClick={() => setSelectedPatient(null)} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full p-0 sm:px-4">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Volver al listado
                   </Button>
                   <AdminBookingDialog 
@@ -281,32 +277,30 @@ const Admin = () => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                  <div className="space-y-8">
-                    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
-                      <CardHeader className="border-b border-[#fdfaf6] p-8">
-                        <div className="flex items-center space-x-6">
-                          <div className="w-20 h-20 bg-[#c17d60]/10 rounded-[2rem] flex items-center justify-center text-[#c17d60] text-3xl font-bold">
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
+                  <div className="space-y-6 md:space-y-8 xl:col-span-1">
+                    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
+                      <CardHeader className="border-b border-[#fdfaf6] p-6 md:p-8">
+                        <div className="flex items-center space-x-4 md:space-x-6">
+                          <div className="w-16 h-16 md:w-20 md:h-20 bg-[#c17d60]/10 rounded-2xl md:rounded-[2rem] flex items-center justify-center text-[#c17d60] text-2xl md:text-3xl font-bold shrink-0">
                             {selectedPatient.full_name?.charAt(0)}
                           </div>
-                          <div>
-                            <CardTitle className="text-2xl font-serif text-[#4a3f35]">{selectedPatient.full_name}</CardTitle>
-                            <CardDescription className="text-[#7a6f64]">{selectedPatient.email}</CardDescription>
+                          <div className="min-w-0">
+                            <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">{selectedPatient.full_name}</CardTitle>
+                            <CardDescription className="text-sm md:text-base text-[#7a6f64] truncate">{selectedPatient.email}</CardDescription>
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-8 space-y-8">
+                      <CardContent className="p-6 md:p-8 space-y-6 md:space-y-8">
                         {selectedPatient.admission ? (
-                          <>
-                            <div className="space-y-3">
-                              <Label className="text-xs uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
-                              <p className="text-[#4a3f35] bg-[#fdfaf6] p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
-                                {selectedPatient.admission.reason_for_consultation}
-                              </p>
-                            </div>
-                          </>
+                          <div className="space-y-3">
+                            <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
+                            <p className="text-sm md:text-base text-[#4a3f35] bg-[#fdfaf6] p-4 md:p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
+                              {selectedPatient.admission.reason_for_consultation}
+                            </p>
+                          </div>
                         ) : (
-                          <p className="text-[#7a6f64] italic">No hay formulario de admisión registrado.</p>
+                          <p className="text-sm text-[#7a6f64] italic">Sin formulario de admisión.</p>
                         )}
                       </CardContent>
                     </Card>
@@ -314,35 +308,35 @@ const Admin = () => {
                     <DocumentManager patientId={selectedPatient.id} isAdmin={true} />
                   </div>
 
-                  <Card className="lg:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
-                    <CardHeader className="p-8">
-                      <CardTitle className="text-2xl font-serif text-[#4a3f35] flex items-center">
-                        <History className="w-6 h-6 mr-3 text-[#b5b891]" /> Historial de Sesiones
+                  <Card className="xl:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="p-6 md:p-8">
+                      <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] flex items-center">
+                        <History className="w-5 h-5 md:w-6 md:h-6 mr-3 text-[#b5b891]" /> Historial
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-8">
-                      <div className="space-y-4">
+                    <CardContent className="p-6 md:p-8">
+                      <div className="space-y-3 md:space-y-4">
                         {patientHistory.length > 0 ? (
                           patientHistory.map((apt) => (
-                            <div key={apt.id} className="flex items-center justify-between p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-colors">
-                              <div className="flex items-center space-x-6">
+                            <div key={apt.id} className="flex items-center justify-between p-4 md:p-6 bg-[#fdfaf6] rounded-2xl md:rounded-[2rem] border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-colors">
+                              <div className="flex items-center space-x-4 md:space-x-6 min-w-0">
                                 <div className={cn(
-                                  "p-4 rounded-2xl",
+                                  "p-3 md:p-4 rounded-xl md:rounded-2xl shrink-0",
                                   isPast(new Date(apt.start_time)) ? "bg-[#e8e1d5] text-[#7a6f64]" : "bg-[#b5b891]/20 text-[#6b6e4d]"
                                 )}>
-                                  <Calendar className="w-5 h-5" />
+                                  <Calendar className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
-                                <div>
-                                  <p className="text-lg font-serif text-[#4a3f35]">
+                                <div className="min-w-0">
+                                  <p className="text-base md:text-lg font-serif text-[#4a3f35] truncate">
                                     {format(new Date(apt.start_time), 'PPP', { locale: es })}
                                   </p>
-                                  <p className="text-sm text-[#7a6f64]">
+                                  <p className="text-xs md:text-sm text-[#7a6f64]">
                                     {format(new Date(apt.start_time), 'HH:mm')}
                                   </p>
                                 </div>
                               </div>
                               <Badge variant="secondary" className={cn(
-                                "rounded-full px-4",
+                                "rounded-full px-3 md:px-4 text-[10px] md:text-xs shrink-0",
                                 apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : ""
                               )}>
                                 {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
@@ -350,7 +344,7 @@ const Admin = () => {
                             </div>
                           ))
                         ) : (
-                          <p className="text-center py-12 text-[#7a6f64]">No hay citas registradas.</p>
+                          <p className="text-center py-12 text-sm text-[#7a6f64]">No hay citas registradas.</p>
                         )}
                       </div>
                     </CardContent>
@@ -358,36 +352,36 @@ const Admin = () => {
                 </div>
               </div>
             ) : (
-              <div className="space-y-8">
+              <div className="space-y-6 md:space-y-8">
                 <div className="relative max-w-md">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7a6f64] w-5 h-5" />
                   <Input 
                     placeholder="Buscar paciente..." 
-                    className="pl-12 h-14 bg-white border-[#e8e1d5] rounded-full focus:ring-[#c17d60] text-lg"
+                    className="pl-12 h-12 md:h-14 bg-white border-[#e8e1d5] rounded-full focus:ring-[#c17d60] text-base md:text-lg"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {filteredPatients.map((patient) => (
                     <Card 
                       key={patient.id} 
-                      className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all cursor-pointer group rounded-[2.5rem] overflow-hidden"
+                      className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden"
                       onClick={() => fetchPatientDetails(patient)}
                     >
-                      <CardContent className="p-8">
+                      <CardContent className="p-6 md:p-8">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-5">
-                            <div className="w-14 h-14 bg-[#fdfaf6] border border-[#e8e1d5] rounded-2xl flex items-center justify-center text-[#c17d60] font-bold group-hover:bg-[#c17d60] group-hover:text-white transition-all">
+                          <div className="flex items-center space-x-4 min-w-0">
+                            <div className="w-12 h-12 md:w-14 md:h-14 bg-[#fdfaf6] border border-[#e8e1d5] rounded-xl md:rounded-2xl flex items-center justify-center text-[#c17d60] font-bold group-hover:bg-[#c17d60] group-hover:text-white transition-all shrink-0">
                               {patient.full_name?.charAt(0)}
                             </div>
-                            <div>
-                              <h3 className="text-lg font-serif text-[#4a3f35] group-hover:text-[#c17d60] transition-colors">{patient.full_name}</h3>
-                              <p className="text-sm text-[#7a6f64]">{patient.email}</p>
+                            <div className="min-w-0">
+                              <h3 className="text-base md:text-lg font-serif text-[#4a3f35] group-hover:text-[#c17d60] transition-colors truncate">{patient.full_name}</h3>
+                              <p className="text-xs md:text-sm text-[#7a6f64] truncate">{patient.email}</p>
                             </div>
                           </div>
-                          <ChevronRight className="w-5 h-5 text-[#e8e1d5] group-hover:text-[#c17d60] transition-all" />
+                          <ChevronRight className="w-5 h-5 text-[#e8e1d5] group-hover:text-[#c17d60] transition-all shrink-0" />
                         </div>
                       </CardContent>
                     </Card>
@@ -397,48 +391,46 @@ const Admin = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="admissions" className="space-y-8">
-            <div className="grid grid-cols-1 gap-8">
+          <TabsContent value="admissions" className="space-y-6 md:space-y-8">
+            <div className="grid grid-cols-1 gap-6 md:gap-8">
               {admissions.length > 0 ? (
                 admissions.map((adm) => (
-                  <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[3rem] overflow-hidden">
-                    <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-8">
+                  <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] md:rounded-[3rem] overflow-hidden">
+                    <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-6 md:p-8">
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                        <div className="flex items-center space-x-6">
-                          <div className="w-16 h-16 bg-white border border-[#e8e1d5] rounded-3xl flex items-center justify-center text-[#c17d60] text-xl font-bold">
+                        <div className="flex items-center space-x-4 md:space-x-6 min-w-0">
+                          <div className="w-14 h-14 md:w-16 md:h-16 bg-white border border-[#e8e1d5] rounded-2xl md:rounded-3xl flex items-center justify-center text-[#c17d60] text-lg md:text-xl font-bold shrink-0">
                             {adm.full_name?.charAt(0) || 'P'}
                           </div>
-                          <div>
-                            <CardTitle className="text-2xl font-serif text-[#4a3f35]">
+                          <div className="min-w-0">
+                            <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">
                               {adm.full_name || 'Paciente'}
                             </CardTitle>
-                            <CardDescription className="flex items-center text-[#7a6f64]">
-                              <Mail className="w-3 h-3 mr-2" /> {adm.email}
+                            <CardDescription className="flex items-center text-sm md:text-base text-[#7a6f64] truncate">
+                              <Mail className="w-3 h-3 mr-2 shrink-0" /> {adm.email}
                             </CardDescription>
                           </div>
                         </div>
-                        <div className="flex space-x-3 w-full md:w-auto">
-                          <Button 
-                            onClick={() => handleAdmission(adm, 'APPROVED')} 
-                            disabled={actionLoading === adm.id}
-                            className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-12"
-                          >
-                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
-                          </Button>
-                        </div>
+                        <Button 
+                          onClick={() => handleAdmission(adm, 'APPROVED')} 
+                          disabled={actionLoading === adm.id}
+                          className="w-full md:w-auto bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-11 md:h-12 text-sm md:text-base"
+                        >
+                          {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
+                        </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-10">
-                      <p className="text-[#4a3f35] text-lg leading-relaxed bg-[#fdfaf6] p-6 rounded-[2rem] border border-[#e8e1d5]">
+                    <CardContent className="p-6 md:p-10">
+                      <p className="text-sm md:text-lg text-[#4a3f35] leading-relaxed bg-[#fdfaf6] p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-[#e8e1d5]">
                         {adm.reason_for_consultation}
                       </p>
                     </CardContent>
                   </Card>
                 ))
               ) : (
-                <div className="text-center py-24 bg-white rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
-                  <ClipboardList className="w-16 h-16 mx-auto mb-6 text-[#e8e1d5]" />
-                  <h3 className="text-2xl font-serif text-[#7a6f64]">No hay solicitudes pendientes</h3>
+                <div className="text-center py-16 md:py-24 bg-white rounded-[2.5rem] md:rounded-[3rem] border-2 border-dashed border-[#e8e1d5]">
+                  <ClipboardList className="w-12 h-12 md:w-16 md:h-16 mx-auto mb-4 md:mb-6 text-[#e8e1d5]" />
+                  <h3 className="text-xl md:text-2xl font-serif text-[#7a6f64]">Sin solicitudes pendientes</h3>
                 </div>
               )}
             </div>

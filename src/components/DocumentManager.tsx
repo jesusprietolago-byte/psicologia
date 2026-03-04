@@ -49,20 +49,16 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
     
     setUploading(true);
     const file = e.target.files[0];
-    const fileExt = file.name.split('.').pop();
-    // Usamos una estructura de carpetas: patientId/timestamp-nombre
     const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
     const filePath = `${patientId}/${fileName}`;
 
     try {
-      // 1. Subir a Storage
       const { error: uploadError } = await supabase.storage
         .from('patient-documents')
         .upload(filePath, file);
 
       if (uploadError) throw uploadError;
 
-      // 2. Registrar en la tabla
       const { error: dbError } = await supabase.from('documents').insert({
         patient_id: patientId,
         name: file.name,
@@ -77,7 +73,6 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
       showError("Error al subir: " + error.message);
     } finally {
       setUploading(false);
-      // Limpiar el input
       e.target.value = '';
     }
   };
@@ -107,14 +102,12 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
     if (!confirm(`¿Estás seguro de eliminar "${doc.name}"? Esta acción no se puede deshacer.`)) return;
 
     try {
-      // 1. Eliminar de Storage
       const { error: storageError } = await supabase.storage
         .from('patient-documents')
         .remove([doc.file_path]);
 
       if (storageError) throw storageError;
 
-      // 2. Eliminar de la tabla
       const { error: dbError } = await supabase.from('documents').delete().eq('id', doc.id);
 
       if (dbError) throw dbError;
@@ -127,20 +120,20 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
   };
 
   return (
-    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
-      <CardHeader className="p-8 border-b border-[#fdfaf6] flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center">
-          <div className="w-12 h-12 bg-[#c17d60]/10 rounded-2xl flex items-center justify-center mr-4">
-            <FileText className="w-6 h-6 text-[#c17d60]" />
+    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden w-full">
+      <CardHeader className="p-6 md:p-8 border-b border-[#fdfaf6] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+        <div className="flex items-center min-w-0">
+          <div className="w-10 h-10 md:w-12 md:h-12 bg-[#c17d60]/10 rounded-2xl flex items-center justify-center mr-4 shrink-0">
+            <FileText className="w-5 h-5 md:w-6 md:h-6 text-[#c17d60]" />
           </div>
-          <div>
-            <CardTitle className="text-2xl font-serif text-[#4a3f35]">Documentos</CardTitle>
-            <p className="text-sm text-[#7a6f64]">Espacio privado y seguro</p>
+          <div className="min-w-0">
+            <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">Documentos</CardTitle>
+            <p className="text-sm text-[#7a6f64] truncate">Espacio privado y seguro</p>
           </div>
         </div>
         
         {isAdmin && (
-          <div className="relative w-full sm:w-auto">
+          <div className="relative w-full lg:w-auto shrink-0">
             <input
               type="file"
               id="file-upload"
@@ -148,7 +141,7 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
               onChange={handleUpload}
               disabled={uploading}
             />
-            <Button asChild disabled={uploading} className="w-full sm:w-auto bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8 h-12 shadow-lg shadow-[#c17d60]/20">
+            <Button asChild disabled={uploading} className="w-full lg:w-auto bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-6 h-11 shadow-lg shadow-[#c17d60]/20">
               <label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                 Subir Archivo
@@ -157,7 +150,7 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
           </div>
         )}
       </CardHeader>
-      <CardContent className="p-8">
+      <CardContent className="p-6 md:p-8">
         <div className="space-y-4">
           {loading ? (
             <div className="flex flex-col items-center py-12 space-y-4">
@@ -166,62 +159,53 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
             </div>
           ) : documents.length > 0 ? (
             documents.map((doc) => (
-              <div key={doc.id} className="group flex items-center justify-between p-5 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-all hover:shadow-md">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-white rounded-xl border border-[#e8e1d5] shadow-sm group-hover:scale-110 transition-transform">
-                    <FileIcon className="w-6 h-6 text-[#c17d60]" />
+              <div key={doc.id} className="group flex items-center justify-between p-4 md:p-5 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-all hover:shadow-md min-w-0">
+                <div className="flex items-center space-x-4 min-w-0 flex-1 mr-2">
+                  <div className="p-2 md:p-3 bg-white rounded-xl border border-[#e8e1d5] shadow-sm shrink-0">
+                    <FileIcon className="w-5 h-5 md:w-6 md:h-6 text-[#c17d60]" />
                   </div>
-                  <div>
-                    <p className="font-medium text-[#4a3f35] text-lg">{doc.name}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-[#4a3f35] text-base md:text-lg truncate" title={doc.name}>{doc.name}</p>
                     <p className="text-xs text-[#7a6f64] flex items-center">
-                      <Clock className="w-3 h-3 mr-1" />
-                      {format(new Date(doc.created_at), "d 'de' MMMM, yyyy", { locale: es })}
+                      <Clock className="w-3 h-3 mr-1 shrink-0" />
+                      <span className="truncate">{format(new Date(doc.created_at), "d 'de' MMM, yyyy", { locale: es })}</span>
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 md:space-x-2 shrink-0">
                   <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={() => handleDownload(doc)} 
-                    className="h-11 w-11 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white rounded-full shadow-sm"
-                    title="Descargar"
+                    className="h-9 w-9 md:h-11 md:w-11 text-[#7a6f64] hover:text-[#c17d60] hover:bg-white rounded-full"
                   >
-                    <Download className="w-5 h-5" />
+                    <Download className="w-4 h-4 md:w-5 md:h-5" />
                   </Button>
                   {isAdmin && (
                     <Button 
                       variant="ghost" 
                       size="icon" 
                       onClick={() => handleDelete(doc)} 
-                      className="h-11 w-11 text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full shadow-sm"
-                      title="Eliminar"
+                      className="h-9 w-9 md:h-11 md:w-11 text-[#7a6f64] hover:text-red-500 hover:bg-red-50 rounded-full"
                     >
-                      <Trash2 className="w-5 h-5" />
+                      <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
                     </Button>
                   )}
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-16 border-2 border-dashed border-[#e8e1d5] rounded-[3rem] bg-[#fdfaf6]/30">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <FileText className="w-10 h-10 text-[#e8e1d5]" />
-              </div>
-              <h3 className="text-xl font-serif text-[#4a3f35]">No hay documentos todavía</h3>
-              <p className="text-[#7a6f64] mt-2 max-w-xs mx-auto">
-                {isAdmin 
-                  ? "Sube el primer archivo para compartirlo con el paciente de forma segura." 
-                  : "Laura compartirá contigo aquí los documentos relevantes de tu proceso."}
-              </p>
+            <div className="text-center py-12 md:py-16 border-2 border-dashed border-[#e8e1d5] rounded-[2.5rem] bg-[#fdfaf6]/30">
+              <FileText className="w-10 h-10 text-[#e8e1d5] mx-auto mb-4" />
+              <h3 className="text-lg font-serif text-[#4a3f35]">No hay documentos</h3>
             </div>
           )}
         </div>
         
-        <div className="mt-8 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start space-x-3">
-          <ShieldAlert className="w-5 h-5 text-blue-600 mt-0.5" />
-          <p className="text-xs text-blue-700 leading-relaxed">
-            Este espacio cumple con la normativa de protección de datos. Los archivos están encriptados y solo son accesibles por ti y tu psicóloga.
+        <div className="mt-6 md:mt-8 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex items-start space-x-3">
+          <ShieldAlert className="w-4 h-4 md:w-5 md:h-5 text-blue-600 mt-0.5 shrink-0" />
+          <p className="text-[10px] md:text-xs text-blue-700 leading-relaxed">
+            Espacio seguro y encriptado conforme a la normativa de protección de datos.
           </p>
         </div>
       </CardContent>
