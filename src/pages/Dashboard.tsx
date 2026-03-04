@@ -22,7 +22,7 @@ import {
   MessageCircle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
-import { format } from 'date-fns';
+import { format } from 'date-bottom';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
@@ -47,7 +47,7 @@ const Dashboard = () => {
   }, [user, role]);
 
   const fetchAdminProfile = async () => {
-    // Buscamos explícitamente al usuario con rol admin
+    // Buscamos al usuario con rol admin para habilitar el chat
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name')
