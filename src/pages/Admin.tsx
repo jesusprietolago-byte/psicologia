@@ -25,17 +25,20 @@ import {
   Mail,
   RefreshCw,
   Loader2,
-  XCircle
+  XCircle,
+  MessageCircle
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
 import AdminBookingDialog from '@/components/AdminBookingDialog';
 import DocumentManager from '@/components/DocumentManager';
 import ClinicalNoteDialog from '@/components/ClinicalNoteDialog';
+import MessageDialog from '@/components/MessageDialog';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { translateStatus } from '@/utils/translations';
 
 const Admin = () => {
   const { role, signOut } = useAuth();
@@ -262,7 +265,7 @@ const Admin = () => {
                               "px-3 py-1 rounded-full border-none text-xs md:text-sm",
                               apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : "bg-[#b5b891]/20 text-[#6b6e4d]"
                             )}>
-                              {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : 'Confirmada'}
+                              {translateStatus(apt.status)}
                             </Badge>
                             <div className="flex gap-2 flex-1 sm:flex-none">
                               {apt.status === 'SCHEDULED' && (
@@ -303,11 +306,17 @@ const Admin = () => {
                   <Button variant="ghost" onClick={() => setSelectedPatient(null)} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full p-0 sm:px-4">
                     <ArrowLeft className="w-4 h-4 mr-2" /> Volver al listado
                   </Button>
-                  <AdminBookingDialog 
-                    patientId={selectedPatient.id} 
-                    patientName={selectedPatient.full_name} 
-                    onSuccess={() => fetchPatientDetails(selectedPatient)}
-                  />
+                  <div className="flex gap-3">
+                    <MessageDialog 
+                      otherUserId={selectedPatient.id} 
+                      otherUserName={selectedPatient.full_name} 
+                    />
+                    <AdminBookingDialog 
+                      patientId={selectedPatient.id} 
+                      patientName={selectedPatient.full_name} 
+                      onSuccess={() => fetchPatientDetails(selectedPatient)}
+                    />
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8">
@@ -373,10 +382,9 @@ const Admin = () => {
                                   "rounded-full px-3 md:px-4 text-[10px] md:text-xs shrink-0",
                                   apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : ""
                                 )}>
-                                  {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
+                                  {translateStatus(apt.status)}
                                 </Badge>
                                 
-                                {/* Botón de Notas por Sesión */}
                                 <ClinicalNoteDialog 
                                   appointmentId={apt.id} 
                                   patientId={selectedPatient.id}

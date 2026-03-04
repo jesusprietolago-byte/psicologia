@@ -19,19 +19,24 @@ import {
   Check,
   X,
   Loader2,
-  AlertCircle
+  MessageCircle
 } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
-import { format, isAfter } from 'date-fns';
+import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { showSuccess, showError } from '@/utils/toast';
+import { translateStatus } from '@/utils/translations';
+import MessageDialog from '@/components/MessageDialog';
+
+const ADMIN_ID = "jesusprietolago@gmail.com"; // Usamos el email como referencia para el chat si no tenemos el ID real a mano, pero lo ideal es buscar el ID del admin
 
 const Dashboard = () => {
   const { user, role, signOut } = useAuth();
   const [admissionStatus, setAdmissionStatus] = useState<string | null>(null);
   const [nextAppointment, setNextAppointment] = useState<any>(null);
   const [pendingAppointment, setPendingAppointment] = useState<any>(null);
+  const [adminProfile, setAdminProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -39,8 +44,18 @@ const Dashboard = () => {
   useEffect(() => {
     if (user && role === 'patient') {
       fetchPatientData();
+      fetchAdminProfile();
     }
   }, [user, role]);
+
+  const fetchAdminProfile = async () => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .eq('role', 'admin')
+      .single();
+    if (data) setAdminProfile(data);
+  };
 
   const fetchPatientData = async () => {
     setRefreshing(true);
@@ -56,20 +71,18 @@ const Dashboard = () => {
       setAdmissionStatus(admissionData?.status || 'NOT_STARTED');
 
       if (admissionData?.status === 'APPROVED') {
-        // 2. Buscar cita confirmada (SCHEDULED) - Solo futuras o en curso
         const { data: appointmentData } = await supabase
           .from('appointments')
           .select('*')
           .eq('patient_id', user?.id)
           .eq('status', 'SCHEDULED')
-          .gte('end_time', new Date().toISOString()) // Que no haya terminado todavía
+          .gte('end_time', new Date().toISOString())
           .order('start_time', { ascending: true })
           .limit(1)
           .maybeSingle();
         
         setNextAppointment(appointmentData);
 
-        // 3. Buscar cita propuesta por el admin (PENDING_CONFIRMATION)
         const { data: pendingData } = await supabase
           .from('appointments')
           .select('*')
@@ -149,6 +162,17 @@ const Dashboard = () => {
           <h1 className="text-xl font-serif font-medium text-[#4a3f35]">Mi Espacio</h1>
         </div>
         <div className="flex items-center space-x-4">
+          {adminProfile && (
+            <MessageDialog 
+              otherUserId={adminProfile.id} 
+              otherUserName="Laura (Psicóloga)" 
+              trigger={
+                <Button variant="ghost" className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+                  <MessageCircle className="w-4 h-4 mr-2" /> Mensajes
+                </Button>
+              }
+            />
+          )}
           <Button variant="ghost" size="icon" onClick={fetchPatientData} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
             <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
           </Button>

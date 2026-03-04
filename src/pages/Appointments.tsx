@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { translateStatus } from '@/utils/translations';
 
 const Appointments = () => {
   const { user } = useAuth();
@@ -26,7 +27,7 @@ const Appointments = () => {
       .from('appointments')
       .select('*')
       .eq('patient_id', user?.id)
-      .order('start_time', { ascending: true });
+      .order('start_time', { ascending: false }); // Ordenado de más nuevas a más antiguas
 
     if (error) console.error(error);
     else setAppointments(data || []);
@@ -58,7 +59,7 @@ const Appointments = () => {
                 <CardTitle className="flex items-center justify-between text-2xl font-serif text-[#4a3f35]">
                   <span>Sesión de Terapia</span>
                   <Badge className={apt.status === 'SCHEDULED' ? "bg-[#b5b891] text-white" : "bg-[#e8e1d5] text-[#7a6f64]"}>
-                    {apt.status === 'SCHEDULED' ? 'Programada' : apt.status}
+                    {translateStatus(apt.status)}
                   </Badge>
                 </CardTitle>
               </CardHeader>
