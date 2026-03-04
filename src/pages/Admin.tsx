@@ -27,7 +27,8 @@ import {
   Loader2,
   XCircle,
   MessageCircle,
-  Settings
+  Settings,
+  Layout
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -35,7 +36,7 @@ import AdminBookingDialog from '@/components/AdminBookingDialog';
 import DocumentManager from '@/components/DocumentManager';
 import ClinicalNoteDialog from '@/components/ClinicalNoteDialog';
 import MessageDialog from '@/components/MessageDialog';
-import ContentManager from '@/components/ContentManager';
+import VisualEditor from '@/components/VisualEditor';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -231,7 +232,7 @@ const Admin = () => {
                 <Clock className="w-4 h-4 mr-2" /> Agenda
               </TabsTrigger>
               <TabsTrigger value="content" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white transition-all text-sm md:text-base">
-                <Settings className="w-4 h-4 mr-2" /> Contenido
+                <Layout className="w-4 h-4 mr-2" /> Editar Web
               </TabsTrigger>
             </TabsList>
           </div>
@@ -496,7 +497,7 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="content">
-            <ContentManager />
+            <VisualEditor />
           </TabsContent>
         </Tabs>
       </main>
