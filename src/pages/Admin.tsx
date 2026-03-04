@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { 
   LogOut, 
   ClipboardList, 
@@ -26,16 +25,13 @@ import {
   Mail,
   RefreshCw,
   Loader2,
-  XCircle,
-  FileText,
-  Save,
-  AlertCircle,
-  User
+  XCircle
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
 import AdminBookingDialog from '@/components/AdminBookingDialog';
 import DocumentManager from '@/components/DocumentManager';
+import ClinicalNoteDialog from '@/components/ClinicalNoteDialog';
 import { showSuccess, showError } from '@/utils/toast';
 import { format, isPast } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -48,8 +44,6 @@ const Admin = () => {
   const [patients, setPatients] = useState<any[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<any | null>(null);
   const [patientHistory, setPatientHistory] = useState<any[]>([]);
-  const [clinicalNotes, setClinicalNotes] = useState('');
-  const [savingNotes, setSavingNotes] = useState(false);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -110,15 +104,12 @@ const Admin = () => {
 
   const fetchPatientDetails = async (patient: any) => {
     setSelectedPatient(patient);
-    
-    // 1. Historial de citas
     const { data: history } = await supabase
       .from('appointments')
       .select('*')
       .eq('patient_id', patient.id)
       .order('start_time', { ascending: false });
     
-    // 2. Formulario de admisión
     const { data: admission } = await supabase
       .from('admissions')
       .select('*')
@@ -127,37 +118,8 @@ const Admin = () => {
       .limit(1)
       .maybeSingle();
 
-    // 3. Notas clínicas
-    const { data: notes } = await supabase
-      .from('clinical_notes')
-      .select('content')
-      .eq('patient_id', patient.id)
-      .maybeSingle();
-
     setPatientHistory(history || []);
-    setClinicalNotes(notes?.content || '');
     setSelectedPatient({ ...patient, admission });
-  };
-
-  const saveClinicalNotes = async () => {
-    if (!selectedPatient) return;
-    setSavingNotes(true);
-    try {
-      const { error } = await supabase
-        .from('clinical_notes')
-        .upsert({
-          patient_id: selectedPatient.id,
-          content: clinicalNotes,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'patient_id' });
-
-      if (error) throw error;
-      showSuccess("Notas guardadas correctamente");
-    } catch (error: any) {
-      showError(error.message);
-    } finally {
-      setSavingNotes(false);
-    }
   };
 
   const cancelAppointment = async (id: string) => {
@@ -362,33 +324,13 @@ const Admin = () => {
                           </div>
                         </div>
                       </CardHeader>
-                      <CardContent className="p-6 md:p-8 space-y-6">
+                      <CardContent className="p-6 md:p-8 space-y-6 md:space-y-8">
                         {selectedPatient.admission ? (
-                          <div className="space-y-6">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div className="bg-[#fdfaf6] p-4 rounded-2xl border border-[#e8e1d5]">
-                                <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest block mb-1">Menor de edad</Label>
-                                <p className="font-medium text-[#4a3f35]">{selectedPatient.admission.is_minor ? 'Sí' : 'No'}</p>
-                              </div>
-                              <div className="bg-[#fdfaf6] p-4 rounded-2xl border border-[#e8e1d5]">
-                                <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest block mb-1">Terapia previa</Label>
-                                <p className="font-medium text-[#4a3f35]">{selectedPatient.admission.previous_therapy ? 'Sí' : 'No'}</p>
-                              </div>
-                            </div>
-                            
-                            <div className="space-y-2">
-                              <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Medicación</Label>
-                              <p className="text-sm text-[#4a3f35] bg-[#fdfaf6] p-4 rounded-2xl border border-[#e8e1d5]">
-                                {selectedPatient.admission.medication || 'Ninguna'}
-                              </p>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
-                              <p className="text-sm text-[#4a3f35] bg-[#fdfaf6] p-4 rounded-2xl border border-[#e8e1d5] leading-relaxed">
-                                {selectedPatient.admission.reason_for_consultation}
-                              </p>
-                            </div>
+                          <div className="space-y-3">
+                            <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
+                            <p className="text-sm md:text-base text-[#4a3f35] bg-[#fdfaf6] p-4 md:p-5 rounded-2xl border border-[#e8e1d5] leading-relaxed">
+                              {selectedPatient.admission.reason_for_consultation}
+                            </p>
                           </div>
                         ) : (
                           <p className="text-sm text-[#7a6f64] italic">Sin formulario de admisión.</p>
@@ -399,93 +341,56 @@ const Admin = () => {
                     <DocumentManager patientId={selectedPatient.id} isAdmin={true} />
                   </div>
 
-                  <div className="xl:col-span-2 space-y-6 md:space-y-8">
-                    {/* Notas Clínicas Privadas */}
-                    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
-                      <CardHeader className="p-6 md:p-8 flex flex-row items-center justify-between">
-                        <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] flex items-center">
-                          <FileText className="w-5 h-5 md:w-6 md:h-6 mr-3 text-[#c17d60]" /> Notas Clínicas Privadas
-                        </CardTitle>
-                        <Button 
-                          onClick={saveClinicalNotes} 
-                          disabled={savingNotes}
-                          className="bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-6"
-                        >
-                          {savingNotes ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Save className="w-4 h-4 mr-2" /> Guardar</>}
-                        </Button>
-                      </CardHeader>
-                      <CardContent className="p-6 md:p-8 pt-0">
-                        <div className="bg-amber-50/50 p-4 rounded-2xl border border-amber-100 mb-4 flex items-start space-x-3">
-                          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                          <p className="text-xs text-amber-700">Estas notas son estrictamente privadas. El paciente nunca tendrá acceso a ellas.</p>
-                        </div>
-                        <Textarea 
-                          value={clinicalNotes}
-                          onChange={(e) => setClinicalNotes(e.target.value)}
-                          placeholder="Escribe aquí tus observaciones clínicas, evolución del paciente, tareas pendientes..."
-                          className="min-h-[300px] bg-[#fdfaf6] border-[#e8e1d5] rounded-[2rem] p-6 focus:ring-[#c17d60] resize-none text-base"
-                        />
-                      </CardContent>
-                    </Card>
-
-                    {/* Historial de Citas */}
-                    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
-                      <CardHeader className="p-6 md:p-8">
-                        <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] flex items-center">
-                          <History className="w-5 h-5 md:w-6 md:h-6 mr-3 text-[#b5b891]" /> Historial de Sesiones
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="p-6 md:p-8 pt-0">
-                        <div className="space-y-3">
-                          {patientHistory.length > 0 ? (
-                            patientHistory.map((apt) => (
-                              <div key={apt.id} className="flex items-center justify-between p-4 md:p-6 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-colors">
-                                <div className="flex items-center space-x-4 min-w-0">
-                                  <div className={cn(
-                                    "p-3 rounded-xl shrink-0",
-                                    isPast(new Date(apt.start_time)) ? "bg-[#e8e1d5] text-[#7a6f64]" : "bg-[#b5b891]/20 text-[#6b6e4d]"
-                                  )}>
-                                    <Calendar className="w-4 h-4 md:w-5 md:h-5" />
-                                  </div>
-                                  <div className="min-w-0">
-                                    <p className="text-base md:text-lg font-serif text-[#4a3f35] truncate">
-                                      {format(new Date(apt.start_time), 'PPP', { locale: es })}
-                                    </p>
-                                    <p className="text-xs md:text-sm text-[#7a6f64]">
-                                      {format(new Date(apt.start_time), 'HH:mm')}
-                                    </p>
-                                  </div>
+                  <Card className="xl:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden">
+                    <CardHeader className="p-6 md:p-8">
+                      <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] flex items-center">
+                        <History className="w-5 h-5 md:w-6 md:h-6 mr-3 text-[#b5b891]" /> Historial
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 md:p-8">
+                      <div className="space-y-3 md:space-y-4">
+                        {patientHistory.length > 0 ? (
+                          patientHistory.map((apt) => (
+                            <div key={apt.id} className="flex items-center justify-between p-4 md:p-6 bg-[#fdfaf6] rounded-2xl md:rounded-[2rem] border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-colors">
+                              <div className="flex items-center space-x-4 md:space-x-6 min-w-0">
+                                <div className={cn(
+                                  "p-3 md:p-4 rounded-xl md:rounded-2xl shrink-0",
+                                  isPast(new Date(apt.start_time)) ? "bg-[#e8e1d5] text-[#7a6f64]" : "bg-[#b5b891]/20 text-[#6b6e4d]"
+                                )}>
+                                  <Calendar className="w-4 h-4 md:w-5 md:h-5" />
                                 </div>
-                                <div className="flex items-center gap-3">
-                                  <Badge variant="secondary" className={cn(
-                                    "rounded-full px-3 text-[10px] md:text-xs",
-                                    apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : 
-                                    apt.status === 'CANCELLED' ? "bg-red-100 text-red-700" : ""
-                                  )}>
-                                    {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : 
-                                     apt.status === 'CANCELLED' ? 'Cancelada' :
-                                     isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
-                                  </Badge>
-                                  {apt.status !== 'CANCELLED' && !isPast(new Date(apt.start_time)) && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      onClick={() => cancelAppointment(apt.id)}
-                                      className="h-8 w-8 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-full"
-                                    >
-                                      <XCircle className="w-4 h-4" />
-                                    </Button>
-                                  )}
+                                <div className="min-w-0">
+                                  <p className="text-base md:text-lg font-serif text-[#4a3f35] truncate">
+                                    {format(new Date(apt.start_time), 'PPP', { locale: es })}
+                                  </p>
+                                  <p className="text-xs md:text-sm text-[#7a6f64]">
+                                    {format(new Date(apt.start_time), 'HH:mm')}
+                                  </p>
                                 </div>
                               </div>
-                            ))
-                          ) : (
-                            <p className="text-center py-12 text-sm text-[#7a6f64]">No hay citas registradas.</p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
+                              <div className="flex items-center gap-3">
+                                <Badge variant="secondary" className={cn(
+                                  "rounded-full px-3 md:px-4 text-[10px] md:text-xs shrink-0",
+                                  apt.status === 'PENDING_CONFIRMATION' ? "bg-amber-100 text-amber-700" : ""
+                                )}>
+                                  {apt.status === 'PENDING_CONFIRMATION' ? 'Pendiente' : isPast(new Date(apt.start_time)) ? 'Realizada' : 'Programada'}
+                                </Badge>
+                                
+                                {/* Botón de Notas por Sesión */}
+                                <ClinicalNoteDialog 
+                                  appointmentId={apt.id} 
+                                  patientId={selectedPatient.id}
+                                  appointmentDate={apt.start_time}
+                                />
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-center py-12 text-sm text-[#7a6f64]">No hay citas registradas.</p>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             ) : (
@@ -548,49 +453,19 @@ const Admin = () => {
                             </CardDescription>
                           </div>
                         </div>
-                        <div className="flex gap-3 w-full md:w-auto">
-                          <Button 
-                            onClick={() => handleAdmission(adm, 'APPROVED')} 
-                            disabled={actionLoading === adm.id}
-                            className="flex-1 md:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-11 md:h-12"
-                          >
-                            {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            onClick={() => handleAdmission(adm, 'REJECTED')} 
-                            disabled={actionLoading === adm.id}
-                            className="flex-1 md:flex-none border-red-200 text-red-500 hover:bg-red-50 rounded-full px-8 h-11 md:h-12"
-                          >
-                            Rechazar
-                          </Button>
-                        </div>
+                        <Button 
+                          onClick={() => handleAdmission(adm, 'APPROVED')} 
+                          disabled={actionLoading === adm.id}
+                          className="w-full md:w-auto bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-8 h-11 md:h-12 text-sm md:text-base"
+                        >
+                          {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
+                        </Button>
                       </div>
                     </CardHeader>
-                    <CardContent className="p-6 md:p-10 space-y-8">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <div className="space-y-1">
-                          <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Menor de edad</Label>
-                          <div className="flex items-center text-[#4a3f35] font-medium">
-                            {adm.is_minor ? <Badge className="bg-amber-100 text-amber-700 border-none">Sí</Badge> : 'No'}
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Terapia previa</Label>
-                          <div className="text-[#4a3f35] font-medium">{adm.previous_therapy ? 'Sí' : 'No'}</div>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Medicación</Label>
-                          <div className="text-[#4a3f35] font-medium">{adm.medication || 'Ninguna'}</div>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-3">
-                        <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
-                        <p className="text-sm md:text-lg text-[#4a3f35] leading-relaxed bg-[#fdfaf6] p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-[#e8e1d5]">
-                          {adm.reason_for_consultation}
-                        </p>
-                      </div>
+                    <CardContent className="p-6 md:p-10">
+                      <p className="text-sm md:text-lg text-[#4a3f35] leading-relaxed bg-[#fdfaf6] p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-[#e8e1d5]">
+                        {adm.reason_for_consultation}
+                      </p>
                     </CardContent>
                   </Card>
                 ))
