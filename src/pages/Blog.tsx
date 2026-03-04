@@ -5,28 +5,45 @@ import { supabase } from '@/integrations/supabase/client';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Calendar, ArrowRight, Leaf, Loader2 } from 'lucide-react';
+import { ArrowLeft, Calendar, ArrowRight, Leaf, Loader2, Clock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 const Blog = () => {
   const [posts, setPosts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      const { data } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('is_published', true)
-        .order('created_at', { ascending: false });
-      setPosts(data || []);
+    const fetchData = async () => {
+      const [settingsRes, postsRes] = await Promise.all([
+        supabase.from('site_settings').select('value').eq('key', 'show_blog').maybeSingle(),
+        supabase.from('posts').select('*').eq('is_published', true).order('created_at', { ascending: false })
+      ]);
+
+      setIsVisible(settingsRes.data?.value === 'true');
+      setPosts(postsRes.data || []);
       setLoading(false);
     };
-    fetchPosts();
+    fetchData();
   }, []);
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]"><Loader2 className="animate-spin text-[#c17d60]" /></div>;
+
+  if (!isVisible) {
+    return (
+      <div className="min-h-screen bg-[#fdfaf6] flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-20 h-20 bg-[#c17d60]/10 rounded-full flex items-center justify-center mb-8">
+          <Clock className="text-[#c17d60] w-10 h-10" />
+        </div>
+        <h1 className="text-4xl font-serif text-[#4a3f35] mb-4">Blog en construcción</h1>
+        <p className="text-[#7a6f64] max-w-md mb-8">Estamos preparando contenido de valor para ti. ¡Vuelve pronto!</p>
+        <Button asChild variant="outline" className="rounded-full border-[#c17d60] text-[#c17d60] hover:bg-[#c17d60] hover:text-white">
+          <Link to="/"><ArrowLeft className="w-4 h-4 mr-2" /> Volver al inicio</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] font-sans">

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { Heart, Sparkles, Leaf, Coffee, User, Loader2, ArrowRight } from "lucide-react";
+import { cn } from '@/lib/utils';
 
 const iconMap: Record<string, any> = {
   Sparkles: <Sparkles />,
@@ -47,6 +48,8 @@ const Index = () => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]"><Loader2 className="w-10 h-10 animate-spin text-[#c17d60]" /></div>;
 
+  const showBlog = settings.show_blog === 'true';
+
   return (
     <div className="min-h-screen bg-[#fdfaf6] font-sans">
       {/* Navigation */}
@@ -58,7 +61,9 @@ const Index = () => {
           <span className="text-2xl font-serif font-medium text-[#4a3f35]">{settings.site_name || 'Alma Psychology'}</span>
         </div>
         <div className="flex items-center space-x-8">
-          <Link to="/blog" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Blog</Link>
+          {showBlog && (
+            <Link to="/blog" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Blog</Link>
+          )}
           <Link to="/login" className="text-[#4a3f35] hover:text-[#c17d60] transition-colors font-medium">Acceso Pacientes</Link>
           <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-8">
             <Link to="/admission">Solicitar Cita</Link>
@@ -132,7 +137,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-[#c17d60] rounded-full flex items-center justify-center">
-              <Leaf className="text-white v-5 h-5" />
+              <Leaf className="text-white w-5 h-5" />
             </div>
             <span className="text-xl font-serif text-[#4a3f35]">{settings.site_name}</span>
           </div>

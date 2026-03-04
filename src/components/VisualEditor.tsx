@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { showSuccess, showError } from '@/utils/toast';
 import { 
   Sparkles, 
@@ -18,17 +20,8 @@ import {
   Trash2,
   Check,
   Layout,
-  ArrowUp,
-  ArrowDown
+  FileText
 } from 'lucide-react';
-
-const iconMap: Record<string, any> = {
-  Sparkles: <Sparkles />,
-  Heart: <Heart />,
-  Leaf: <Leaf />,
-  Coffee: <Coffee />,
-  User: <User />
-};
 
 const VisualEditor = () => {
   const [settings, setSettings] = useState<any[]>([]);
@@ -113,13 +106,27 @@ const VisualEditor = () => {
   return (
     <div className="space-y-20 pb-20">
       
-      <div className="bg-[#b5b891] text-white p-6 rounded-[2rem] flex items-center justify-between shadow-lg shadow-[#b5b891]/20">
+      <div className="bg-[#b5b891] text-white p-6 rounded-[2rem] flex flex-col md:flex-row items-center justify-between shadow-lg shadow-[#b5b891]/20 gap-6">
         <div className="flex items-center space-x-4">
           <div className="bg-white/20 p-3 rounded-2xl"><Sparkles className="w-6 h-6" /></div>
           <div>
             <p className="font-serif text-xl">Editor Visual de la Home</p>
-            <p className="text-sm opacity-80">Haz clic en cualquier texto para editarlo. Los cambios se guardan al instante.</p>
+            <p className="text-sm opacity-80">Haz clic en cualquier texto para editarlo.</p>
           </div>
+        </div>
+        
+        {/* Interruptor del Blog */}
+        <div className="bg-white/10 p-4 rounded-2xl flex items-center space-x-4 border border-white/20">
+          <div className="flex items-center space-x-3">
+            <FileText className="w-5 h-5" />
+            <Label htmlFor="blog-toggle" className="font-medium cursor-pointer">Mostrar Blog en la web</Label>
+          </div>
+          <Switch 
+            id="blog-toggle"
+            checked={getSetting('show_blog') === 'true'}
+            onCheckedChange={(checked) => handleUpdateSetting('show_blog', checked.toString())}
+            className="data-[state=checked]:bg-white data-[state=checked]:text-[#b5b891]"
+          />
         </div>
       </div>
 
