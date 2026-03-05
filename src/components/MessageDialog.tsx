@@ -37,7 +37,6 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
     if (!user || !otherUserId) return;
     
     try {
-      // Actualizamos en la base de datos
       const { error } = await supabase
         .from('messages')
         .update({ is_read: true })
@@ -46,8 +45,6 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
         .eq('is_read', false);
       
       if (error) throw error;
-
-      // Notificamos al padre para que refresque los contadores inmediatamente
       if (onOpen) onOpen();
     } catch (e) {
       console.error("Error al marcar como leído:", e);
@@ -58,24 +55,35 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
     if (otherUserId && user) {
       fetchMessages();
       
+      // Suscripción optimizada: escuchamos todos los cambios en la tabla messages
+      // pero filtramos en el cliente para asegurar que solo procesamos lo relevante a este chat
       const channel = supabase
-        .channel(`chat:${user.id}:${otherUserId}`)
+        .channel(`chat-room-${otherUserId}`)
         .on(
           'postgres_changes',
           { 
-            event: '*', 
+            event: 'INSERT', 
             schema: 'public', 
             table: 'messages'
           },
           (payload) => {
-            // Si recibimos un mensaje nuevo de esta persona mientras el chat está abierto
-            if (payload.eventType === 'INSERT' && 
-                payload.new.receiver_id === user.id && 
-                payload.new.sender_id === otherUserId) {
-              setMessages((prev) => [...prev, payload.new]);
-              markAsRead(); 
+            const newMsg = payload.new;
+            // ¿Es un mensaje para mí de esta persona?
+            if (newMsg.receiver_id === user.id && newMsg.sender_id === otherUserId) {
+              setMessages((prev) => {
+                // Evitar duplicados por si acaso
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg];
+              });
+              markAsRead();
             }
-            // Si el otro usuario marca como leídos nuestros mensajes, podríamos actualizar visualmente si quisiéramos
+            // ¿Es un mensaje mío para esta persona? (Enviado desde otro dispositivo/pestaña)
+            else if (newMsg.sender_id === user.id && newMsg.receiver_id === otherUserId) {
+              setMessages((prev) => {
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return [...prev, newMsg];
+              });
+            }
           }
         )
         .subscribe();
@@ -114,16 +122,20 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
     setNewMessage(''); 
     setSending(true);
 
-    const { data, error } = await supabase.from('messages').insert({
+    // Insertamos el mensaje. El Realtime se encargará de añadirlo a la lista
+    // para mantener la coherencia entre lo que ve el emisor y el receptor.
+    const { error } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: otherUserId,
       content: content,
       is_read: false
-    }).select().single();
+    });
 
-    if (!error && data) {
-      setMessages((prev) => [...prev, data]);
+    if (error) {
+      showError("No se pudo enviar el mensaje");
+      setNewMessage(content); // Devolvemos el texto si falla
     }
+    
     setSending(false);
   };
 
