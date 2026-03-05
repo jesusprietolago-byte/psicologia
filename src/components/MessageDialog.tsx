@@ -36,19 +36,21 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
   const markAsRead = async () => {
     if (!user || !otherUserId) return;
     
-    // Intentamos marcar como leídos los mensajes recibidos de este usuario
-    // Nota: Esto asume que existe la columna 'is_read'. Si no existe, fallará silenciosamente.
     try {
-      await supabase
+      // Actualizamos en la base de datos
+      const { error } = await supabase
         .from('messages')
         .update({ is_read: true })
         .eq('sender_id', otherUserId)
         .eq('receiver_id', user.id)
         .eq('is_read', false);
       
+      if (error) throw error;
+
+      // Notificamos al padre para que refresque los contadores inmediatamente
       if (onOpen) onOpen();
     } catch (e) {
-      console.warn("No se pudo marcar como leído (posiblemente falta columna is_read)");
+      console.error("Error al marcar como leído:", e);
     }
   };
 
@@ -61,15 +63,19 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
         .on(
           'postgres_changes',
           { 
-            event: 'INSERT', 
+            event: '*', 
             schema: 'public', 
             table: 'messages'
           },
           (payload) => {
-            if (payload.new.receiver_id === user.id && payload.new.sender_id === otherUserId) {
+            // Si recibimos un mensaje nuevo de esta persona mientras el chat está abierto
+            if (payload.eventType === 'INSERT' && 
+                payload.new.receiver_id === user.id && 
+                payload.new.sender_id === otherUserId) {
               setMessages((prev) => [...prev, payload.new]);
-              markAsRead(); // Marcar como leído si el chat está abierto
+              markAsRead(); 
             }
+            // Si el otro usuario marca como leídos nuestros mensajes, podríamos actualizar visualmente si quisiéramos
           }
         )
         .subscribe();
@@ -117,8 +123,6 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageD
 
     if (!error && data) {
       setMessages((prev) => [...prev, data]);
-    } else if (error) {
-      setNewMessage(content);
     }
     setSending(false);
   };
