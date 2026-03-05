@@ -46,16 +46,21 @@ const Dashboard = () => {
       fetchAdminProfile();
       fetchUnreadMessages();
 
+      // Suscripción específica para cambios en mensajes dirigidos a este usuario
       const channel = supabase
-        .channel('dashboard-messages')
+        .channel(`dashboard-notifications-${user.id}`)
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'messages'
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`
         }, () => {
+          console.log("[Dashboard] Cambio detectado en mensajes, actualizando contador...");
           fetchUnreadMessages();
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log("[Dashboard] Estado de suscripción Realtime:", status);
+        });
 
       return () => {
         supabase.removeChannel(channel);
@@ -66,15 +71,16 @@ const Dashboard = () => {
   const fetchUnreadMessages = async () => {
     if (!user) return;
     try {
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from('messages')
         .select('*', { count: 'exact', head: true })
         .eq('receiver_id', user.id)
         .eq('is_read', false);
       
+      if (error) throw error;
       setUnreadCount(count || 0);
     } catch (e) {
-      // Si falla por falta de columna, mostramos 0
+      console.error("Error al contar mensajes no leídos:", e);
       setUnreadCount(0);
     }
   };
