@@ -49,7 +49,7 @@ import { cn } from '@/lib/utils';
 import { translateStatus } from '@/utils/translations';
 
 const Admin = () => {
-  const { role, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -58,12 +58,48 @@ const Admin = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [unreadMessages, setUnreadMessages] = useState<Record<string, number>>({});
 
   useEffect(() => {
     if (role === 'admin') {
       fetchAllData();
+      fetchUnreadMessages();
+
+      const channel = supabase
+        .channel('admin-messages')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'messages'
+        }, () => {
+          fetchUnreadMessages();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [role]);
+
+  const fetchUnreadMessages = async () => {
+    if (!user) return;
+    try {
+      const { data } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+      
+      const counts: Record<string, number> = {};
+      data?.forEach(msg => {
+        counts[msg.sender_id] = (counts[msg.sender_id] || 0) + 1;
+      });
+      setUnreadMessages(counts);
+    } catch (e) {
+      setUnreadMessages({});
+    }
+  };
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -172,6 +208,8 @@ const Admin = () => {
     p.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
+
   if (role !== 'admin') return <Navigate to="/dashboard" replace />;
 
   return (
@@ -199,8 +237,11 @@ const Admin = () => {
             <TabsTrigger value="appointments" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
               <Calendar className="w-4 h-4 mr-2" /> Próximas
             </TabsTrigger>
-            <TabsTrigger value="patients" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
+            <TabsTrigger value="patients" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white relative">
               <UserCircle className="w-4 h-4 mr-2" /> Pacientes
+              {totalUnread > 0 && (
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+              )}
             </TabsTrigger>
             <TabsTrigger value="admissions" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
               <ClipboardList className="w-4 h-4 mr-2" /> Admisiones ({admissions.length})
@@ -320,7 +361,11 @@ const Admin = () => {
                         )}
                         
                         <div className="flex gap-3 pt-4">
-                          <MessageDialog otherUserId={selectedPatient.id} otherUserName={selectedPatient.full_name} />
+                          <MessageDialog 
+                            otherUserId={selectedPatient.id} 
+                            otherUserName={selectedPatient.full_name} 
+                            onOpen={fetchUnreadMessages}
+                          />
                           <AdminBookingDialog patientId={selectedPatient.id} patientName={selectedPatient.full_name} onSuccess={() => fetchPatientDetails(selectedPatient)} />
                         </div>
                       </CardContent>
@@ -367,7 +412,10 @@ const Admin = () => {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredPatients.map((patient) => (
-                    <Card key={patient.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden" onClick={() => fetchPatientDetails(patient)}>
+                    <Card key={patient.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white hover:shadow-2xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden relative" onClick={() => fetchPatientDetails(patient)}>
+                      {unreadMessages[patient.id] > 0 && (
+                        <span className="absolute top-4 right-4 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse z-10" />
+                      )}
                       <CardContent className="p-8 flex items-center justify-between">
                         <div className="flex items-center space-x-4">
                           <div className="w-14 h-14 bg-[#fdfaf6] border border-[#e8e1d5] rounded-2xl flex items-center justify-center text-[#c17d60] font-bold group-hover:bg-[#c17d60] group-hover:text-white transition-all">

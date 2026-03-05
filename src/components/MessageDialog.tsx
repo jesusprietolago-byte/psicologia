@@ -22,9 +22,10 @@ interface MessageDialogProps {
   otherUserId: string;
   otherUserName: string;
   trigger?: React.ReactNode;
+  onOpen?: () => void;
 }
 
-const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogProps) => {
+const MessageDialog = ({ otherUserId, otherUserName, trigger, onOpen }: MessageDialogProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<any[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -32,9 +33,27 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
   const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  const markAsRead = async () => {
+    if (!user || !otherUserId) return;
+    
+    // Intentamos marcar como leídos los mensajes recibidos de este usuario
+    // Nota: Esto asume que existe la columna 'is_read'. Si no existe, fallará silenciosamente.
+    try {
+      await supabase
+        .from('messages')
+        .update({ is_read: true })
+        .eq('sender_id', otherUserId)
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+      
+      if (onOpen) onOpen();
+    } catch (e) {
+      console.warn("No se pudo marcar como leído (posiblemente falta columna is_read)");
+    }
+  };
+
   useEffect(() => {
     if (otherUserId && user) {
-      console.log(`[Chat] Iniciando chat con: ${otherUserName} (${otherUserId})`);
       fetchMessages();
       
       const channel = supabase
@@ -47,19 +66,15 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
             table: 'messages'
           },
           (payload) => {
-            console.log("[Chat] Nuevo mensaje detectado en Realtime:", payload);
-            // Solo añadir si el mensaje es para nosotros y viene de la persona correcta
             if (payload.new.receiver_id === user.id && payload.new.sender_id === otherUserId) {
               setMessages((prev) => [...prev, payload.new]);
+              markAsRead(); // Marcar como leído si el chat está abierto
             }
           }
         )
-        .subscribe((status) => {
-          console.log(`[Chat] Estado de la suscripción Realtime: ${status}`);
-        });
+        .subscribe();
 
       return () => {
-        console.log("[Chat] Cerrando canal de chat");
         supabase.removeChannel(channel);
       };
     }
@@ -79,10 +94,7 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
       .or(`and(sender_id.eq.${user?.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${user?.id})`)
       .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error("[Chat] Error al cargar mensajes:", error);
-    } else {
-      console.log(`[Chat] ${data?.length || 0} mensajes cargados`);
+    if (!error) {
       setMessages(data || []);
     }
     setLoading(false);
@@ -96,25 +108,23 @@ const MessageDialog = ({ otherUserId, otherUserName, trigger }: MessageDialogPro
     setNewMessage(''); 
     setSending(true);
 
-    console.log("[Chat] Enviando mensaje...");
     const { data, error } = await supabase.from('messages').insert({
       sender_id: user.id,
       receiver_id: otherUserId,
-      content: content
+      content: content,
+      is_read: false
     }).select().single();
 
-    if (error) {
-      console.error("[Chat] Error al enviar mensaje:", error);
-      setNewMessage(content); // Devolvemos el texto al input si falla
-    } else if (data) {
-      console.log("[Chat] Mensaje enviado con éxito");
+    if (!error && data) {
       setMessages((prev) => [...prev, data]);
+    } else if (error) {
+      setNewMessage(content);
     }
     setSending(false);
   };
 
   return (
-    <Dialog>
+    <Dialog onOpenChange={(open) => { if(open) markAsRead(); }}>
       <DialogTrigger asChild>
         {trigger || (
           <Button variant="outline" className="rounded-full border-[#c17d60] text-[#c17d60] hover:bg-[#c17d60] hover:text-white">

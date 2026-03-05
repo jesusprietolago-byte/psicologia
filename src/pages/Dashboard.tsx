@@ -46,14 +46,12 @@ const Dashboard = () => {
       fetchAdminProfile();
       fetchUnreadMessages();
 
-      // Suscribirse a nuevos mensajes para actualizar el contador
       const channel = supabase
         .channel('dashboard-messages')
         .on('postgres_changes', { 
-          event: 'INSERT', 
+          event: '*', 
           schema: 'public', 
-          table: 'messages',
-          filter: `receiver_id=eq.${user.id}`
+          table: 'messages'
         }, () => {
           fetchUnreadMessages();
         })
@@ -67,15 +65,18 @@ const Dashboard = () => {
 
   const fetchUnreadMessages = async () => {
     if (!user) return;
-    // Nota: Como no tenemos columna is_read aún, simulamos la notificación 
-    // si hay mensajes nuevos en la sesión actual o simplemente mostramos si hay mensajes totales
-    // Para una implementación real, necesitaríamos la columna is_read en la DB.
-    const { count } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('receiver_id', user.id);
-    
-    setUnreadCount(count || 0);
+    try {
+      const { count } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', user.id)
+        .eq('is_read', false);
+      
+      setUnreadCount(count || 0);
+    } catch (e) {
+      // Si falla por falta de columna, mostramos 0
+      setUnreadCount(0);
+    }
   };
 
   const fetchAdminProfile = async () => {
@@ -145,7 +146,6 @@ const Dashboard = () => {
 
       if (status === 'SCHEDULED') {
         showSuccess("¡Cita confirmada!");
-        // Crear sala si no existe
         const { data: apt } = await supabase.from('appointments').select('video_room_url').eq('id', id).single();
         if (!apt?.video_room_url) {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
@@ -196,6 +196,7 @@ const Dashboard = () => {
               <MessageDialog 
                 otherUserId={adminProfile.id} 
                 otherUserName="Laura (Psicóloga)" 
+                onOpen={fetchUnreadMessages}
                 trigger={
                   <Button variant="ghost" className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
                     <MessageCircle className="w-4 h-4 mr-2" /> Mensajes
