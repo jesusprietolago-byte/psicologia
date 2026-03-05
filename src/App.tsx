@@ -13,9 +13,9 @@ import Session from "./pages/Session";
 import AdmissionForm from "./pages/AdmissionForm";
 import Booking from "./pages/Booking";
 import Appointments from "./pages/Appointments";
-import Invoices from "./pages/Invoices";
 import Documents from "./pages/Documents";
 import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 import CustomPage from "./pages/CustomPage";
 import NotFound from "./pages/NotFound";
 
@@ -33,6 +33,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/admission" element={<AdmissionForm />} />
             <Route path="/blog" element={<Blog />} />
+            <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/p/:slug" element={<CustomPage />} />
             
             {/* Rutas de Paciente */}
@@ -57,12 +58,6 @@ const App = () => (
             <Route path="/documents" element={
               <ProtectedRoute allowedRole="patient">
                 <Documents />
-              </ProtectedRoute>
-            } />
-
-            <Route path="/invoices" element={
-              <ProtectedRoute allowedRole="patient">
-                <Invoices />
               </ProtectedRoute>
             } />
 

@@ -35,6 +35,7 @@ const Dashboard = () => {
   const [nextAppointment, setNextAppointment] = useState<any>(null);
   const [pendingAppointment, setPendingAppointment] = useState<any>(null);
   const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -43,22 +44,48 @@ const Dashboard = () => {
     if (user && role === 'patient') {
       fetchPatientData();
       fetchAdminProfile();
+      fetchUnreadMessages();
+
+      // Suscribirse a nuevos mensajes para actualizar el contador
+      const channel = supabase
+        .channel('dashboard-messages')
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`
+        }, () => {
+          fetchUnreadMessages();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [user, role]);
 
+  const fetchUnreadMessages = async () => {
+    if (!user) return;
+    // Nota: Como no tenemos columna is_read aún, simulamos la notificación 
+    // si hay mensajes nuevos en la sesión actual o simplemente mostramos si hay mensajes totales
+    // Para una implementación real, necesitaríamos la columna is_read en la DB.
+    const { count } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id);
+    
+    setUnreadCount(count || 0);
+  };
+
   const fetchAdminProfile = async () => {
-    // Buscamos al usuario con rol admin para habilitar el chat
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('profiles')
       .select('id, full_name')
       .eq('role', 'admin')
       .maybeSingle();
     
-    if (data) {
-      setAdminProfile(data);
-    } else if (error) {
-      console.error("Error buscando perfil admin:", error);
-    }
+    if (data) setAdminProfile(data);
   };
 
   const fetchPatientData = async () => {
@@ -99,7 +126,7 @@ const Dashboard = () => {
         setPendingAppointment(pendingData);
       }
     } catch (error) {
-      console.error("Error fetching dashboard data:", error);
+      console.error(error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -117,8 +144,10 @@ const Dashboard = () => {
       if (error) throw error;
 
       if (status === 'SCHEDULED') {
-        showSuccess("¡Cita confirmada! Te esperamos.");
-        try {
+        showSuccess("¡Cita confirmada!");
+        // Crear sala si no existe
+        const { data: apt } = await supabase.from('appointments').select('video_room_url').eq('id', id).single();
+        if (!apt?.video_room_url) {
           const functionUrl = `https://remnvakjvujygcdwnsgn.supabase.co/functions/v1/create-daily-room`;
           const response = await fetch(functionUrl, {
             method: 'POST',
@@ -131,11 +160,9 @@ const Dashboard = () => {
             const { url } = await response.json();
             await supabase.from('appointments').update({ video_room_url: url }).eq('id', id);
           }
-        } catch (e) { 
-          console.error("Error creando sala:", e); 
         }
       } else {
-        showSuccess("Cita rechazada correctamente.");
+        showSuccess("Cita rechazada.");
       }
       
       await fetchPatientData();
@@ -148,13 +175,11 @@ const Dashboard = () => {
 
   if (role === 'admin') return <Navigate to="/admin" replace />;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]">
-        <div className="animate-pulse text-[#c17d60] font-serif text-xl">Preparando tu espacio...</div>
-      </div>
-    );
-  }
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-[#fdfaf6]">
+      <div className="animate-pulse text-[#c17d60] font-serif text-xl">Cargando tu espacio...</div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#fdfaf6] font-sans">
@@ -167,21 +192,26 @@ const Dashboard = () => {
         </div>
         <div className="flex items-center space-x-4">
           {adminProfile && (
-            <MessageDialog 
-              otherUserId={adminProfile.id} 
-              otherUserName="Laura (Psicóloga)" 
-              trigger={
-                <Button variant="ghost" className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
-                  <MessageCircle className="w-4 h-4 mr-2" /> Mensajes
-                </Button>
-              }
-            />
+            <div className="relative">
+              <MessageDialog 
+                otherUserId={adminProfile.id} 
+                otherUserName="Laura (Psicóloga)" 
+                trigger={
+                  <Button variant="ghost" className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+                    <MessageCircle className="w-4 h-4 mr-2" /> Mensajes
+                  </Button>
+                }
+              />
+              {unreadCount > 0 && (
+                <span className="absolute top-1 right-1 w-3 h-3 bg-red-500 border-2 border-white rounded-full animate-pulse" />
+              )}
+            </div>
           )}
           <Button variant="ghost" size="icon" onClick={fetchPatientData} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
             <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
           </Button>
-          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-[#c17d60] hover:bg-[#fdfaf6] rounded-full">
-            <LogOut className="w-4 h-4 mr-2" /> Cerrar Sesión
+          <Button variant="ghost" onClick={signOut} className="text-[#7a6f64] hover:text-[#c17d60] rounded-full">
+            <LogOut className="w-4 h-4 mr-2" /> Salir
           </Button>
         </div>
       </nav>
@@ -189,17 +219,15 @@ const Dashboard = () => {
       <main className="max-w-5xl mx-auto p-6 space-y-10">
         <header className="pt-8">
           <h2 className="text-4xl font-serif text-[#4a3f35]">Hola, {user?.user_metadata?.full_name || 'Paciente'}</h2>
-          <p className="text-[#7a6f64] mt-2 text-lg">Es un buen momento para cuidar de ti.</p>
+          <p className="text-[#7a6f64] mt-2 text-lg">Bienvenido a tu panel personal.</p>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
           <Card className="md:col-span-2 border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden">
             <CardHeader className="pb-2 pt-8 px-8">
-              <CardTitle className="text-xl font-serif text-[#4a3f35]">Tu proceso actual</CardTitle>
+              <CardTitle className="text-xl font-serif text-[#4a3f35]">Tu proceso</CardTitle>
             </CardHeader>
             <CardContent className="p-8">
-              
               {admissionStatus === 'NOT_STARTED' && (
                 <div className="py-6 text-center space-y-6">
                   <div className="w-20 h-20 bg-[#fdfaf6] rounded-3xl flex items-center justify-center mx-auto border border-[#e8e1d5]">
@@ -217,38 +245,36 @@ const Dashboard = () => {
                   <div className="bg-white p-4 rounded-2xl shadow-sm"><Clock className="text-[#c17d60] w-8 h-8" /></div>
                   <div className="space-y-2">
                     <h3 className="text-2xl font-serif text-[#4a3f35]">Solicitud en revisión</h3>
-                    <p className="text-[#7a6f64]">Estamos revisando tu información. Te avisaremos pronto por email.</p>
+                    <p className="text-[#7a6f64]">Estamos revisando tu información. Te avisaremos pronto.</p>
                   </div>
                 </div>
               )}
 
               {admissionStatus === 'APPROVED' && (
                 <div className="space-y-8">
-                  
                   {pendingAppointment ? (
-                    <div className="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-200 space-y-6 animate-in fade-in slide-in-from-top-4">
+                    <div className="bg-amber-50 p-8 rounded-[2.5rem] border border-amber-200 space-y-6">
                       <div className="flex items-start space-x-5">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-amber-100">
                           <Sparkles className="text-amber-600 w-8 h-8" />
                         </div>
                         <div className="space-y-1">
-                          <h3 className="text-2xl font-serif text-[#4a3f35]">Laura te ha propuesto una cita</h3>
+                          <h3 className="text-2xl font-serif text-[#4a3f35]">Propuesta de cita</h3>
                           <p className="text-amber-800 font-medium text-lg">
                             {format(new Date(pendingAppointment.start_time), "EEEE d 'de' MMMM", { locale: es })}
                           </p>
                           <p className="text-amber-700 font-medium">
-                            {format(new Date(pendingAppointment.start_time), "HH:mm")} — {format(new Date(pendingAppointment.end_time), "HH:mm")}
+                            {format(new Date(pendingAppointment.start_time), "HH:mm")}
                           </p>
-                          <p className="text-amber-700/70 text-sm">Por favor, confirma si puedes asistir o rechaza para liberar el hueco.</p>
                         </div>
                       </div>
                       <div className="flex flex-col sm:flex-row gap-4 pt-2">
                         <Button 
                           onClick={() => handleAppointmentAction(pendingAppointment.id, 'SCHEDULED')}
                           disabled={actionLoading}
-                          className="flex-1 bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full h-14 text-lg shadow-lg shadow-[#b5b891]/20"
+                          className="flex-1 bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full h-14 text-lg"
                         >
-                          {actionLoading ? <Loader2 className="animate-spin" /> : <><Check className="w-5 h-5 mr-2" /> Confirmar Asistencia</>}
+                          {actionLoading ? <Loader2 className="animate-spin" /> : <><Check className="w-5 h-5 mr-2" /> Confirmar</>}
                         </Button>
                         <Button 
                           variant="outline"
@@ -272,11 +298,11 @@ const Dashboard = () => {
                             {format(new Date(nextAppointment.start_time), "EEEE d 'de' MMMM", { locale: es })}
                           </p>
                           <p className="text-[#6b6e4d] font-medium">
-                            {format(new Date(nextAppointment.start_time), "HH:mm")} — {format(new Date(nextAppointment.end_time), "HH:mm")}
+                            {format(new Date(nextAppointment.start_time), "HH:mm")}
                           </p>
                         </div>
                       </div>
-                      <Button asChild className="bg-[#6b6e4d] hover:bg-[#5a5d41] text-white rounded-full px-10 h-14 text-lg w-full sm:w-auto shadow-lg shadow-[#6b6e4d]/20">
+                      <Button asChild className="bg-[#6b6e4d] hover:bg-[#5a5d41] text-white rounded-full px-10 h-14 text-lg w-full sm:w-auto">
                         <Link to={`/session/${nextAppointment.id}`}>Entrar a la sala</Link>
                       </Button>
                     </div>
@@ -287,9 +313,9 @@ const Dashboard = () => {
                       </div>
                       <div className="space-y-2">
                         <h3 className="text-3xl font-serif text-[#4a3f35]">¿Agendamos tu sesión?</h3>
-                        <p className="text-[#7a6f64] max-w-xs mx-auto">Elige el momento que mejor te venga para continuar con tu proceso.</p>
+                        <p className="text-[#7a6f64] max-w-xs mx-auto">Elige el momento que mejor te venga.</p>
                       </div>
-                      <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-12 h-14 text-lg shadow-lg shadow-[#c17d60]/20">
+                      <Button asChild className="bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-12 h-14 text-lg">
                         <Link to="/booking">Reservar Cita <ArrowRight className="ml-2 w-5 h-5" /></Link>
                       </Button>
                     </div>
@@ -321,28 +347,13 @@ const Dashboard = () => {
                     <div className="bg-[#fdfaf6] p-4 rounded-2xl group-hover:bg-[#c17d60]/10 transition-colors border border-[#e8e1d5]">
                       <FileText className="text-[#c17d60] w-6 h-6" />
                     </div>
-                    <span className="font-serif text-xl text-[#4a3f35]">Mis Documentos</span>
+                    <span className="font-serif text-xl text-[#4a3f35]">Documentos</span>
                   </div>
                   <ArrowRight className="w-5 h-5 text-[#e8e1d5] group-hover:text-[#c17d60] transition-colors" />
                 </CardContent>
               </Link>
             </Card>
-
-            <Card className="border-none shadow-lg shadow-[#c17d60]/5 bg-white hover:shadow-xl transition-all cursor-pointer group rounded-[2rem] overflow-hidden">
-              <Link to="/invoices">
-                <CardContent className="p-8 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="bg-[#fdfaf6] p-4 rounded-2xl group-hover:bg-[#b5b891]/20 transition-colors border border-[#e8e1d5]">
-                      <FileText className="text-[#6b6e4d] w-6 h-6" />
-                    </div>
-                    <span className="font-serif text-xl text-[#4a3f35]">Facturas</span>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-[#e8e1d5] group-hover:text-[#6b6e4d] transition-colors" />
-                </CardContent>
-              </Link>
-            </Card>
           </div>
-
         </div>
       </main>
     </div>
