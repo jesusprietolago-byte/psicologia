@@ -18,7 +18,11 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-const ADMIN_EMAIL = "jesusprietolago@gmail.com"; 
+// Lista de correos con acceso de administrador
+const ADMIN_EMAILS = [
+  "jesusprietolago@gmail.com",
+  "laura@tu-email.com" // <-- SUSTITUYE ESTO por el email real de Laura
+]; 
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -33,7 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    const userRole = currentUser.email === ADMIN_EMAIL ? 'admin' : 'patient';
+    const userRole = ADMIN_EMAILS.includes(currentUser.email || '') ? 'admin' : 'patient';
     setUser(currentUser);
     setRole(userRole);
     setLoading(false);
@@ -53,14 +57,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // 1. Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserSession(session?.user || null);
     }).catch(() => setLoading(false));
 
-    // 2. Escuchar cambios (incluyendo el login automático tras pulsar el enlace del email)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("Auth Event:", event);
       if (session?.user) {
         handleUserSession(session.user);
       } else if (event === 'SIGNED_OUT') {
