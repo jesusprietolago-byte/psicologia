@@ -21,7 +21,7 @@ const AuthContext = createContext<AuthContextType>({
 // Lista de correos con acceso de administrador
 const ADMIN_EMAILS = [
   "jesusprietolago@gmail.com",
-  "laura@tu-email.com" // <-- SUSTITUYE ESTO por el email real de Laura
+  "laprila88@hotmail.com"
 ]; 
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
