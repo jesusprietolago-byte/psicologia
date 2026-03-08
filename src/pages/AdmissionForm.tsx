@@ -18,13 +18,11 @@ import {
   Eye, 
   EyeOff, 
   Loader2, 
-  Users, 
   Heart, 
   Home, 
   Plus, 
   Trash2, 
   Phone,
-  Baby,
   Stethoscope
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -124,7 +122,6 @@ const AdmissionForm = () => {
       if (authError) throw authError;
       if (!authData.user) throw new Error("No se pudo crear el usuario.");
 
-      // Preparar datos adicionales según el tipo
       const additionalData: any = { attention_type: attentionType };
       if (attentionType === 'parejas') {
         additionalData.partner = { fullName: formData.partnerName, phone: formData.partnerPhone };
@@ -139,8 +136,8 @@ const AdmissionForm = () => {
         phone: formData.phone,
         reason_for_consultation: formData.reason,
         previous_therapy: formData.previousTherapy,
-        medication: formData.medication,
-        is_minor: formData.isMinor,
+        medication: attentionType === 'parejas' ? '' : formData.medication,
+        is_minor: attentionType === 'parejas' ? false : formData.isMinor,
         status: 'PENDING_APPROVAL',
         additional_data: additionalData
       });
@@ -184,6 +181,7 @@ const AdmissionForm = () => {
                   ].map((opt) => (
                     <button
                       key={opt.id}
+                      type="button"
                       onClick={() => setAttentionType(opt.id as AttentionType)}
                       className="flex flex-col items-center p-8 bg-[#fdfaf6] border-2 border-transparent hover:border-[#c17d60] rounded-[2.5rem] transition-all group"
                     >
@@ -205,10 +203,9 @@ const AdmissionForm = () => {
                     </div>
                     <span className="font-medium text-[#4a3f35]">Atención {attentionType.charAt(0).toUpperCase() + attentionType.slice(1)}</span>
                   </div>
-                  <Button variant="ghost" size="sm" onClick={() => setAttentionType(null)} className="text-[#c17d60] hover:bg-white">Cambiar</Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setAttentionType(null)} className="text-[#c17d60] hover:bg-white">Cambiar</Button>
                 </div>
 
-                {/* Datos de Contacto Principal */}
                 <div className="space-y-6">
                   <h3 className="text-lg font-serif text-[#c17d60] border-b border-[#fdfaf6] pb-2">Datos de Contacto</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -244,7 +241,6 @@ const AdmissionForm = () => {
                   </div>
                 </div>
 
-                {/* Sección Parejas */}
                 {attentionType === 'parejas' && (
                   <div className="space-y-6 p-8 bg-[#fdfaf6] rounded-[2.5rem] border border-[#e8e1d5]">
                     <h3 className="text-lg font-serif text-[#c17d60] flex items-center"><Heart className="w-5 h-5 mr-2" /> Datos de la Pareja</h3>
@@ -261,7 +257,6 @@ const AdmissionForm = () => {
                   </div>
                 )}
 
-                {/* Sección Familiar */}
                 {attentionType === 'familiar' && (
                   <div className="space-y-10">
                     <div className="space-y-6">
@@ -326,25 +321,34 @@ const AdmissionForm = () => {
                   </div>
                 )}
 
-                {/* Información Clínica Común */}
                 <div className="space-y-8">
                   <h3 className="text-lg font-serif text-[#c17d60] border-b border-[#fdfaf6] pb-2">Información Clínica</h3>
                   <div className="space-y-3">
-                    <Label className="text-[#4a3f35] font-medium">¿Cuál es el motivo principal de tu consulta?</Label>
+                    <Label className="text-[#4a3f35] font-medium">
+                      {attentionType === 'individual' ? "¿Cuál es el motivo principal de tu consulta?" : "¿Cuál es el motivo principal de vuestra consulta?"}
+                    </Label>
                     <div className="relative">
                       <Stethoscope className="absolute left-4 top-4 w-4 h-4 text-[#7a6f64]" />
                       <Textarea required className="pl-12 min-h-[120px] rounded-2xl bg-[#fdfaf6] border-[#e8e1d5] resize-none" value={formData.reason} onChange={(e) => setFormData({...formData, reason: e.target.value})} />
                     </div>
                   </div>
 
-                  <BooleanButtons label="¿Has realizado terapia anteriormente?" value={formData.previousTherapy} onChange={(v) => setFormData({...formData, previousTherapy: v})} />
+                  <BooleanButtons 
+                    label={attentionType === 'parejas' ? "¿Habéis realizado terapia de pareja anteriormente?" : attentionType === 'familiar' ? "¿Habéis realizado terapia familiar anteriormente?" : "¿Has realizado terapia anteriormente?"} 
+                    value={formData.previousTherapy} 
+                    onChange={(v) => setFormData({...formData, previousTherapy: v})} 
+                  />
 
-                  <div className="space-y-3">
-                    <Label className="text-[#4a3f35] font-medium">¿Tomas alguna medicación actualmente?</Label>
-                    <Textarea className="min-h-[80px] rounded-2xl bg-[#fdfaf6] border-[#e8e1d5] resize-none" value={formData.medication} onChange={(e) => setFormData({...formData, medication: e.target.value})} />
-                  </div>
+                  {attentionType !== 'parejas' && (
+                    <>
+                      <div className="space-y-3">
+                        <Label className="text-[#4a3f35] font-medium">¿Tomas alguna medicación actualmente?</Label>
+                        <Textarea className="min-h-[80px] rounded-2xl bg-[#fdfaf6] border-[#e8e1d5] resize-none" value={formData.medication} onChange={(e) => setFormData({...formData, medication: e.target.value})} />
+                      </div>
 
-                  <BooleanButtons label="¿Eres menor de edad?" value={formData.isMinor} onChange={(v) => setFormData({...formData, isMinor: v})} />
+                      <BooleanButtons label="¿Eres menor de edad?" value={formData.isMinor} onChange={(v) => setFormData({...formData, isMinor: v})} />
+                    </>
+                  )}
                 </div>
 
                 <Button type="submit" className="w-full bg-[#c17d60] hover:bg-[#a66a51] h-14 text-lg rounded-full shadow-lg shadow-[#c17d60]/20" disabled={loading}>
