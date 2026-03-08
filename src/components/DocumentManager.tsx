@@ -120,7 +120,7 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
   };
 
   return (
-    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2.5rem] overflow-hidden w-full">
+    <Card className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[2.5rem] overflow-hidden w-full">
       <CardHeader className="p-6 md:p-8 border-b border-[#fdfaf6] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
         <div className="flex items-center min-w-0">
           <div className="w-10 h-10 md:w-12 md:h-12 bg-[#c17d60]/10 rounded-2xl flex items-center justify-center mr-4 shrink-0">
@@ -128,7 +128,7 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
           </div>
           <div className="min-w-0">
             <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">Documentos</CardTitle>
-            <p className="text-sm text-[#7a6f64] truncate">Espacio privado y seguro</p>
+            <p className="text-xs md:text-sm text-[#7a6f64] truncate">Espacio privado y seguro</p>
           </div>
         </div>
         
@@ -141,7 +141,7 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
               onChange={handleUpload}
               disabled={uploading}
             />
-            <Button asChild disabled={uploading} className="w-full lg:w-auto bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-6 h-11 shadow-lg shadow-[#c17d60]/20">
+            <Button asChild disabled={uploading} className="w-full lg:w-auto bg-[#c17d60] hover:bg-[#a66a51] text-white rounded-full px-6 h-10 md:h-11 shadow-lg shadow-[#c17d60]/20">
               <label htmlFor="file-upload" className="cursor-pointer flex items-center justify-center">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
                 Subir Archivo
@@ -153,20 +153,20 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
       <CardContent className="p-6 md:p-8">
         <div className="space-y-4">
           {loading ? (
-            <div className="flex flex-col items-center py-12 space-y-4">
+            <div className="flex flex-col items-center py-10 md:py-12 space-y-4">
               <Loader2 className="w-8 h-8 animate-spin text-[#c17d60]" />
-              <p className="text-[#7a6f64] font-medium">Cargando archivos...</p>
+              <p className="text-[#7a6f64] font-medium text-sm">Cargando archivos...</p>
             </div>
           ) : documents.length > 0 ? (
             documents.map((doc) => (
               <div key={doc.id} className="group flex items-center justify-between p-4 md:p-5 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] hover:border-[#c17d60]/30 transition-all hover:shadow-md min-w-0">
-                <div className="flex items-center space-x-4 min-w-0 flex-1 mr-2">
+                <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1 mr-2">
                   <div className="p-2 md:p-3 bg-white rounded-xl border border-[#e8e1d5] shadow-sm shrink-0">
                     <FileIcon className="w-5 h-5 md:w-6 md:h-6 text-[#c17d60]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-medium text-[#4a3f35] text-base md:text-lg truncate" title={doc.name}>{doc.name}</p>
-                    <p className="text-xs text-[#7a6f64] flex items-center">
+                    <p className="font-medium text-[#4a3f35] text-sm md:text-lg truncate" title={doc.name}>{doc.name}</p>
+                    <p className="text-[10px] md:text-xs text-[#7a6f64] flex items-center">
                       <Clock className="w-3 h-3 mr-1 shrink-0" />
                       <span className="truncate">{format(new Date(doc.created_at), "d 'de' MMM, yyyy", { locale: es })}</span>
                     </p>
@@ -195,9 +195,9 @@ const DocumentManager = ({ patientId, isAdmin = false }: DocumentManagerProps) =
               </div>
             ))
           ) : (
-            <div className="text-center py-12 md:py-16 border-2 border-dashed border-[#e8e1d5] rounded-[2.5rem] bg-[#fdfaf6]/30">
+            <div className="text-center py-12 md:py-16 border-2 border-dashed border-[#e8e1d5] rounded-[2rem] md:rounded-[2.5rem] bg-[#fdfaf6]/30">
               <FileText className="w-10 h-10 text-[#e8e1d5] mx-auto mb-4" />
-              <h3 className="text-lg font-serif text-[#4a3f35]">No hay documentos</h3>
+              <h3 className="text-base md:text-lg font-serif text-[#4a3f35]">No hay documentos</h3>
             </div>
           )}
         </div>
