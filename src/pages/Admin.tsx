@@ -10,6 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { 
   LogOut, 
   ClipboardList, 
   Check, 
@@ -28,7 +35,8 @@ import {
   Layout,
   FileText,
   Stethoscope,
-  Pill
+  Pill,
+  MessageCircle
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -46,6 +54,7 @@ import { translateStatus } from '@/utils/translations';
 
 const Admin = () => {
   const { user, role, signOut } = useAuth();
+  const [activeTab, setActiveTab] = useState("appointments");
   const [admissions, setAdmissions] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [patients, setPatients] = useState<any[]>([]);
@@ -229,28 +238,62 @@ const Admin = () => {
       </nav>
 
       <main className="max-w-7xl mx-auto p-4 md:p-8">
-        <Tabs defaultValue="appointments" className="space-y-6 md:space-y-10">
-          <div className="overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
-            <TabsList className="bg-white border border-[#e8e1d5] p-1 h-12 md:h-14 rounded-2xl md:rounded-[1.5rem] shadow-sm inline-flex min-w-max md:w-auto">
-              <TabsTrigger value="appointments" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white text-sm md:text-base">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6 md:space-y-10">
+          {/* Mobile Navigation Dropdown */}
+          <div className="md:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full h-12 rounded-2xl border-[#e8e1d5] bg-white text-[#4a3f35] shadow-sm">
+                <SelectValue placeholder="Seleccionar sección" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-[#e8e1d5]">
+                <SelectItem value="appointments" className="rounded-xl">
+                  <div className="flex items-center"><Calendar className="w-4 h-4 mr-2 text-[#c17d60]" /> Próximas</div>
+                </SelectItem>
+                <SelectItem value="patients" className="rounded-xl">
+                  <div className="flex items-center relative">
+                    <UserCircle className="w-4 h-4 mr-2 text-[#c17d60]" /> 
+                    Pacientes
+                    {totalUnread > 0 && <span className="ml-2 w-2 h-2 bg-red-500 rounded-full" />}
+                  </div>
+                </SelectItem>
+                <SelectItem value="admissions" className="rounded-xl">
+                  <div className="flex items-center"><ClipboardList className="w-4 h-4 mr-2 text-[#c17d60]" /> Admisiones ({admissions.length})</div>
+                </SelectItem>
+                <SelectItem value="availability" className="rounded-xl">
+                  <div className="flex items-center"><Clock className="w-4 h-4 mr-2 text-[#c17d60]" /> Agenda</div>
+                </SelectItem>
+                <SelectItem value="content" className="rounded-xl">
+                  <div className="flex items-center"><Layout className="w-4 h-4 mr-2 text-[#c17d60]" /> Editar Web</div>
+                </SelectItem>
+                <SelectItem value="blog" className="rounded-xl">
+                  <div className="flex items-center"><FileText className="w-4 h-4 mr-2 text-[#c17d60]" /> Blog</div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Desktop Navigation Tabs */}
+          <div className="hidden md:block overflow-x-auto pb-2 scrollbar-hide">
+            <TabsList className="bg-white border border-[#e8e1d5] p-1 h-14 rounded-[1.5rem] shadow-sm inline-flex">
+              <TabsTrigger value="appointments" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
                 <Calendar className="w-4 h-4 mr-2" /> Próximas
               </TabsTrigger>
-              <TabsTrigger value="patients" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white relative text-sm md:text-base">
+              <TabsTrigger value="patients" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white relative">
                 <UserCircle className="w-4 h-4 mr-2" /> Pacientes
                 {totalUnread > 0 && (
                   <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse" />
                 )}
               </TabsTrigger>
-              <TabsTrigger value="admissions" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white text-sm md:text-base">
+              <TabsTrigger value="admissions" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
                 <ClipboardList className="w-4 h-4 mr-2" /> Admisiones ({admissions.length})
               </TabsTrigger>
-              <TabsTrigger value="availability" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white text-sm md:text-base">
+              <TabsTrigger value="availability" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
                 <Clock className="w-4 h-4 mr-2" /> Agenda
               </TabsTrigger>
-              <TabsTrigger value="content" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white text-sm md:text-base">
+              <TabsTrigger value="content" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
                 <Layout className="w-4 h-4 mr-2" /> Editar Web
               </TabsTrigger>
-              <TabsTrigger value="blog" className="rounded-xl px-4 md:px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white text-sm md:text-base">
+              <TabsTrigger value="blog" className="rounded-xl px-8 data-[state=active]:bg-[#c17d60] data-[state=active]:text-white">
                 <FileText className="w-4 h-4 mr-2" /> Blog
               </TabsTrigger>
             </TabsList>
