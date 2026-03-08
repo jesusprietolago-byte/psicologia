@@ -37,8 +37,6 @@ interface Adult {
 interface Child {
   fullName: string;
   age: string;
-  reason: string;
-  phone: string;
 }
 
 const BooleanButtons = ({ label, value, onChange }: { label: string, value: boolean, onChange: (v: boolean) => void }) => (
@@ -89,15 +87,15 @@ const AdmissionForm = () => {
     // Datos de pareja
     partnerName: '',
     partnerPhone: '',
-    // Datos familiares
-    adults: [{ fullName: '', phone: '' }] as Adult[],
-    children: [{ fullName: '', age: '', reason: '', phone: '' }] as Child[]
+    // Datos familiares (Adulto 1 son los campos de arriba)
+    additionalAdults: [] as Adult[],
+    children: [{ fullName: '', age: '' }] as Child[]
   });
 
-  const addAdult = () => setFormData({ ...formData, adults: [...formData.adults, { fullName: '', phone: '' }] });
-  const removeAdult = (index: number) => setFormData({ ...formData, adults: formData.adults.filter((_, i) => i !== index) });
+  const addAdult = () => setFormData({ ...formData, additionalAdults: [...formData.additionalAdults, { fullName: '', phone: '' }] });
+  const removeAdult = (index: number) => setFormData({ ...formData, additionalAdults: formData.additionalAdults.filter((_, i) => i !== index) });
   
-  const addChild = () => setFormData({ ...formData, children: [...formData.children, { fullName: '', age: '', reason: '', phone: '' }] });
+  const addChild = () => setFormData({ ...formData, children: [...formData.children, { fullName: '', age: '' }] });
   const removeChild = (index: number) => setFormData({ ...formData, children: formData.children.filter((_, i) => i !== index) });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -126,7 +124,10 @@ const AdmissionForm = () => {
       if (attentionType === 'parejas') {
         additionalData.partner = { fullName: formData.partnerName, phone: formData.partnerPhone };
       } else if (attentionType === 'familiar') {
-        additionalData.family = { adults: formData.adults, children: formData.children };
+        additionalData.family = { 
+          adults: [{ fullName: formData.fullName, phone: formData.phone }, ...formData.additionalAdults],
+          children: formData.children 
+        };
       }
 
       const { error: admissionError } = await supabase.from('admissions').insert({
@@ -136,8 +137,8 @@ const AdmissionForm = () => {
         phone: formData.phone,
         reason_for_consultation: formData.reason,
         previous_therapy: formData.previousTherapy,
-        medication: attentionType === 'parejas' ? '' : formData.medication,
-        is_minor: attentionType === 'parejas' ? false : formData.isMinor,
+        medication: (attentionType === 'parejas' || attentionType === 'familiar') ? '' : formData.medication,
+        is_minor: (attentionType === 'parejas' || attentionType === 'familiar') ? false : formData.isMinor,
         status: 'PENDING_APPROVAL',
         additional_data: additionalData
       });
@@ -207,7 +208,9 @@ const AdmissionForm = () => {
                 </div>
 
                 <div className="space-y-6">
-                  <h3 className="text-lg font-serif text-[#c17d60] border-b border-[#fdfaf6] pb-2">Datos de Contacto</h3>
+                  <h3 className="text-lg font-serif text-[#c17d60] border-b border-[#fdfaf6] pb-2">
+                    {attentionType === 'familiar' ? "Datos del Adulto 1 (Contacto Principal)" : "Datos de Contacto"}
+                  </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <Label>Nombre y Apellidos</Label>
@@ -261,23 +264,23 @@ const AdmissionForm = () => {
                   <div className="space-y-10">
                     <div className="space-y-6">
                       <div className="flex justify-between items-center">
-                        <h3 className="text-lg font-serif text-[#c17d60]">Adultos</h3>
+                        <h3 className="text-lg font-serif text-[#c17d60]">Otros Adultos</h3>
                         <Button type="button" variant="outline" size="sm" onClick={addAdult} className="rounded-full border-[#c17d60] text-[#c17d60]"><Plus className="w-4 h-4 mr-2" /> Añadir Adulto</Button>
                       </div>
-                      {formData.adults.map((adult, idx) => (
+                      {formData.additionalAdults.map((adult, idx) => (
                         <div key={idx} className="p-6 bg-[#fdfaf6] rounded-[2rem] border border-[#e8e1d5] relative">
-                          {idx > 0 && <button type="button" onClick={() => removeAdult(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
-                          <p className="text-xs font-bold text-[#c17d60] uppercase tracking-widest mb-4">Adulto {idx + 1}</p>
+                          <button type="button" onClick={() => removeAdult(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+                          <p className="text-xs font-bold text-[#c17d60] uppercase tracking-widest mb-4">Adulto {idx + 2}</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <Input placeholder="Nombre y Apellidos" className="h-11 rounded-xl bg-white" value={adult.fullName} onChange={(e) => {
-                              const newAdults = [...formData.adults];
+                              const newAdults = [...formData.additionalAdults];
                               newAdults[idx].fullName = e.target.value;
-                              setFormData({...formData, adults: newAdults});
+                              setFormData({...formData, additionalAdults: newAdults});
                             }} />
                             <Input placeholder="Teléfono" className="h-11 rounded-xl bg-white" value={adult.phone} onChange={(e) => {
-                              const newAdults = [...formData.adults];
+                              const newAdults = [...formData.additionalAdults];
                               newAdults[idx].phone = e.target.value;
-                              setFormData({...formData, adults: newAdults});
+                              setFormData({...formData, additionalAdults: newAdults});
                             }} />
                           </div>
                         </div>
@@ -294,27 +297,19 @@ const AdmissionForm = () => {
                           {idx > 0 && <button type="button" onClick={() => removeChild(idx)} className="absolute top-4 right-4 text-red-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>}
                           <p className="text-xs font-bold text-[#c17d60] uppercase tracking-widest">Hijo {idx + 1}</p>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="md:col-span-2"><Input placeholder="Nombre y Apellidos" className="h-11 rounded-xl bg-white" value={child.fullName} onChange={(e) => {
-                              const newChildren = [...formData.children];
-                              newChildren[idx].fullName = e.target.value;
-                              setFormData({...formData, children: newChildren});
-                            }} /></div>
+                            <div className="md:col-span-2">
+                              <Input placeholder="Nombre y Apellidos" className="h-11 rounded-xl bg-white" value={child.fullName} onChange={(e) => {
+                                const newChildren = [...formData.children];
+                                newChildren[idx].fullName = e.target.value;
+                                setFormData({...formData, children: newChildren});
+                              }} />
+                            </div>
                             <Input placeholder="Edad" type="number" className="h-11 rounded-xl bg-white" value={child.age} onChange={(e) => {
                               const newChildren = [...formData.children];
                               newChildren[idx].age = e.target.value;
                               setFormData({...formData, children: newChildren});
                             }} />
                           </div>
-                          <Input placeholder="Teléfono de contacto" className="h-11 rounded-xl bg-white" value={child.phone} onChange={(e) => {
-                            const newChildren = [...formData.children];
-                            newChildren[idx].phone = e.target.value;
-                            setFormData({...formData, children: newChildren});
-                          }} />
-                          <Textarea placeholder="Motivo por el que acude a terapia" className="min-h-[80px] rounded-xl bg-white resize-none" value={child.reason} onChange={(e) => {
-                            const newChildren = [...formData.children];
-                            newChildren[idx].reason = e.target.value;
-                            setFormData({...formData, children: newChildren});
-                          }} />
                         </div>
                       ))}
                     </div>
@@ -339,7 +334,7 @@ const AdmissionForm = () => {
                     onChange={(v) => setFormData({...formData, previousTherapy: v})} 
                   />
 
-                  {attentionType !== 'parejas' && (
+                  {(attentionType === 'individual') && (
                     <>
                       <div className="space-y-3">
                         <Label className="text-[#4a3f35] font-medium">¿Tomas alguna medicación actualmente?</Label>
