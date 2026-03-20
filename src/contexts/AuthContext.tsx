@@ -42,25 +42,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setRole(userRole);
     setLoading(false);
 
-    // Sincronizar perfil en background
+    // Sincronizar perfil en background de forma segura
     try {
-      await supabase.from('profiles').upsert({
+      const { error } = await supabase.from('profiles').upsert({
         id: currentUser.id,
         email: currentUser.email,
         role: userRole,
         full_name: currentUser.user_metadata.full_name || '',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'id' });
+      
+      if (error) console.warn("Aviso de sincronización de perfil:", error.message);
     } catch (e) {
-      console.warn("Sync perfil falló (normal si es RLS), continuando...");
+      // Silenciamos errores de red si la DB está pausada temporalmente
     }
   };
 
   useEffect(() => {
+    // Obtener sesión inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleUserSession(session?.user || null);
     }).catch(() => setLoading(false));
 
+    // Escuchar cambios en la autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         handleUserSession(session.user);
