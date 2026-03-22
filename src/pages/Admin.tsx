@@ -36,7 +36,10 @@ import {
   FileText,
   Stethoscope,
   Pill,
-  MessageCircle
+  MessageCircle,
+  Heart,
+  Home,
+  User
 } from 'lucide-react';
 import { Navigate, Link } from 'react-router-dom';
 import AvailabilityManager from '@/components/AvailabilityManager';
@@ -214,6 +217,19 @@ const Admin = () => {
   );
 
   const totalUnread = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
+
+  const getAttentionTypeInfo = (type: string) => {
+    switch (type) {
+      case 'individual':
+        return { label: 'Individual', icon: <User className="w-3 h-3 mr-1" />, color: 'bg-blue-50 text-blue-700 border-blue-100' };
+      case 'parejas':
+        return { label: 'Pareja', icon: <Heart className="w-3 h-3 mr-1" />, color: 'bg-pink-50 text-pink-700 border-pink-100' };
+      case 'familiar':
+        return { label: 'Familiar', icon: <Home className="w-3 h-3 mr-1" />, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' };
+      default:
+        return { label: 'Individual', icon: <User className="w-3 h-3 mr-1" />, color: 'bg-slate-50 text-slate-700 border-slate-100' };
+    }
+  };
 
   if (role !== 'admin') return <Navigate to="/dashboard" replace />;
 
@@ -490,61 +506,121 @@ const Admin = () => {
           </TabsContent>
 
           <TabsContent value="admissions" className="space-y-6">
-            {admissions.length > 0 ? admissions.map((adm) => (
-              <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden">
-                <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-6 md:p-8">
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center space-x-4 md:space-x-6 w-full sm:w-auto">
-                      <div className="w-14 h-14 md:w-16 md:h-16 bg-white border border-[#e8e1d5] rounded-2xl md:rounded-3xl flex items-center justify-center text-[#c17d60] text-lg md:text-xl font-bold shrink-0">
-                        {adm.full_name?.charAt(0)}
+            {admissions.length > 0 ? admissions.map((adm) => {
+              const attentionInfo = getAttentionTypeInfo(adm.additional_data?.attention_type);
+              return (
+                <Card key={adm.id} className="border-none shadow-xl shadow-[#c17d60]/5 bg-white rounded-[2rem] md:rounded-[3rem] overflow-hidden">
+                  <CardHeader className="bg-[#fdfaf6] border-b border-[#e8e1d5] p-6 md:p-8">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-6">
+                      <div className="flex items-center space-x-4 md:space-x-6 w-full sm:w-auto">
+                        <div className="w-14 h-14 md:w-16 md:h-16 bg-white border border-[#e8e1d5] rounded-2xl md:rounded-3xl flex items-center justify-center text-[#c17d60] text-lg md:text-xl font-bold shrink-0">
+                          {adm.full_name?.charAt(0)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">{adm.full_name}</CardTitle>
+                            <Badge variant="outline" className={cn("rounded-full px-2 py-0 text-[10px] font-bold uppercase tracking-tighter", attentionInfo.color)}>
+                              {attentionInfo.icon} {attentionInfo.label}
+                            </Badge>
+                          </div>
+                          <CardDescription className="truncate">{adm.email}</CardDescription>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <CardTitle className="text-xl md:text-2xl font-serif text-[#4a3f35] truncate">{adm.full_name}</CardTitle>
-                        <CardDescription className="truncate">{adm.email}</CardDescription>
+                      <div className="flex gap-2 w-full sm:w-auto">
+                        <Button onClick={() => handleAdmission(adm, 'APPROVED')} disabled={actionLoading === adm.id} className="flex-1 sm:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-6 h-10 md:h-12">
+                          {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleAdmission(adm, 'REJECTED')} disabled={actionLoading === adm.id} className="text-red-500 rounded-full">
+                          Rechazar
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                      <Button onClick={() => handleAdmission(adm, 'APPROVED')} disabled={actionLoading === adm.id} className="flex-1 sm:flex-none bg-[#b5b891] hover:bg-[#a4a77d] text-white rounded-full px-6 h-10 md:h-12">
-                        {actionLoading === adm.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Check className="w-4 h-4 mr-2" /> Aprobar</>}
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleAdmission(adm, 'REJECTED')} disabled={actionLoading === adm.id} className="text-red-500 rounded-full">
-                        Rechazar
-                      </Button>
+                  </CardHeader>
+                  <CardContent className="p-6 md:p-10 space-y-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                      <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
+                        <span className="text-xs md:text-sm text-[#7a6f64]">Terapia previa</span>
+                        <Badge variant="outline" className="text-[10px] md:text-xs">{adm.previous_therapy ? 'Sí' : 'No'}</Badge>
+                      </div>
+                      <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
+                        <span className="text-xs md:text-sm text-[#7a6f64]">Menor de edad</span>
+                        <Badge variant="outline" className="text-[10px] md:text-xs">{adm.is_minor ? 'Sí' : 'No'}</Badge>
+                      </div>
+                      <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
+                        <span className="text-xs md:text-sm text-[#7a6f64]">Fecha</span>
+                        <span className="text-[10px] md:text-xs font-medium">{format(new Date(adm.created_at), 'dd/MM/yyyy')}</span>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 md:p-10 space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-6">
-                    <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
-                      <span className="text-xs md:text-sm text-[#7a6f64]">Terapia previa</span>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{adm.previous_therapy ? 'Sí' : 'No'}</Badge>
-                    </div>
-                    <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
-                      <span className="text-xs md:text-sm text-[#7a6f64]">Menor de edad</span>
-                      <Badge variant="outline" className="text-[10px] md:text-xs">{adm.is_minor ? 'Sí' : 'No'}</Badge>
-                    </div>
-                    <div className="p-3 md:p-4 bg-[#fdfaf6] rounded-2xl border border-[#e8e1d5] flex items-center justify-between">
-                      <span className="text-xs md:text-sm text-[#7a6f64]">Fecha</span>
-                      <span className="text-[10px] md:text-xs font-medium">{format(new Date(adm.created_at), 'dd/MM/yyyy')}</span>
-                    </div>
-                  </div>
-                  <div className="space-y-3">
-                    <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
-                    <p className="text-base md:text-lg text-[#4a3f35] leading-relaxed bg-[#fdfaf6] p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-[#e8e1d5]">
-                      {adm.reason_for_consultation}
-                    </p>
-                  </div>
-                  {adm.medication && (
+
+                    {/* Detalles específicos según tipo de terapia */}
+                    {adm.additional_data?.attention_type === 'parejas' && adm.additional_data.partner && (
+                      <div className="p-6 bg-pink-50/30 rounded-[2rem] border border-pink-100 space-y-4">
+                        <h4 className="text-sm font-bold text-pink-700 uppercase tracking-widest flex items-center">
+                          <Heart className="w-4 h-4 mr-2" /> Datos de la Pareja
+                        </h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-[10px] text-pink-600 uppercase font-bold">Nombre</p>
+                            <p className="text-[#4a3f35] font-medium">{adm.additional_data.partner.fullName}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-pink-600 uppercase font-bold">Teléfono</p>
+                            <p className="text-[#4a3f35] font-medium">{adm.additional_data.partner.phone}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {adm.additional_data?.attention_type === 'familiar' && adm.additional_data.family && (
+                      <div className="p-6 bg-emerald-50/30 rounded-[2rem] border border-emerald-100 space-y-6">
+                        <h4 className="text-sm font-bold text-emerald-700 uppercase tracking-widest flex items-center">
+                          <Home className="w-4 h-4 mr-2" /> Miembros de la Familia
+                        </h4>
+                        <div className="space-y-4">
+                          <div>
+                            <p className="text-[10px] text-emerald-600 uppercase font-bold mb-2">Adultos</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {adm.additional_data.family.adults.map((adult: any, idx: number) => (
+                                <div key={idx} className="bg-white/50 p-3 rounded-xl border border-emerald-100 text-sm">
+                                  <p className="font-medium text-[#4a3f35]">{adult.fullName}</p>
+                                  <p className="text-xs text-[#7a6f64]">{adult.phone}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <p className="text-[10px] text-emerald-600 uppercase font-bold mb-2">Hijos</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {adm.additional_data.family.children.map((child: any, idx: number) => (
+                                <div key={idx} className="bg-white/50 p-3 rounded-xl border border-emerald-100 text-sm">
+                                  <p className="font-medium text-[#4a3f35]">{child.fullName}</p>
+                                  <p className="text-xs text-[#7a6f64]">{child.age} años</p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="space-y-3">
-                      <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Medicación</Label>
-                      <p className="text-xs md:text-sm text-[#4a3f35] bg-[#fdfaf6] p-3 md:p-4 rounded-2xl border border-[#e8e1d5]">
-                        {adm.medication}
+                      <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Motivo de Consulta</Label>
+                      <p className="text-base md:text-lg text-[#4a3f35] leading-relaxed bg-[#fdfaf6] p-5 md:p-6 rounded-2xl md:rounded-[2rem] border border-[#e8e1d5]">
+                        {adm.reason_for_consultation}
                       </p>
                     </div>
-                  )}
-                </CardContent>
-              </Card>
-            )) : (
+                    {adm.medication && (
+                      <div className="space-y-3">
+                        <Label className="text-[10px] uppercase text-[#c17d60] font-bold tracking-widest">Medicación</Label>
+                        <p className="text-xs md:text-sm text-[#4a3f35] bg-[#fdfaf6] p-3 md:p-4 rounded-2xl border border-[#e8e1d5]">
+                          {adm.medication}
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            }) : (
               <div className="text-center py-12 md:py-20 bg-white rounded-[2rem] border-2 border-dashed border-[#e8e1d5]">
                 <ClipboardList className="w-10 h-10 md:w-12 md:h-12 mx-auto mb-4 text-[#e8e1d5]" />
                 <p className="text-[#7a6f64]">No hay solicitudes de admisión pendientes.</p>
