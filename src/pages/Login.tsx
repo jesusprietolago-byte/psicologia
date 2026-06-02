@@ -56,8 +56,8 @@ const Login = () => {
                     inputBorder: '#e8e1d5',
                   },
                   radii: {
-                    buttonRadius: '9999px',
-                    inputRadius: '1rem',
+                    buttonBorderRadius: '9999px',
+                    inputBorderRadius: '1rem',
                   }
                 }
               }
@@ -71,7 +71,7 @@ const Login = () => {
                   button_label: 'Iniciar sesión',
                   link_text: '¿Ya tienes cuenta? Inicia sesión',
                 },
-                forgot_password: {
+                forgotten_password: {
                   link_text: '¿Olvidaste tu contraseña?',
                   button_label: 'Enviar instrucciones',
                 }

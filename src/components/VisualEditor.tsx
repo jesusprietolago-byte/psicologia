@@ -78,6 +78,16 @@ const VisualEditor = () => {
     setSaving(null);
   };
 
+  const deleteService = async (id: string) => {
+    if (!confirm("¿Eliminar este servicio?")) return;
+    const { error } = await supabase.from('services').delete().eq('id', id);
+    if (error) showError(error.message);
+    else {
+      setServices(prev => prev.filter(s => s.id !== id));
+      showSuccess("Servicio eliminado");
+    }
+  };
+
   const handleUpdateSection = async (id: string, updates: any) => {
     setSaving(id);
     const { error } = await supabase.from('sections').update(updates).eq('id', id);
