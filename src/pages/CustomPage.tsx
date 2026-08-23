@@ -43,7 +43,7 @@ const CustomPage = () => {
           <div className="w-10 h-10 bg-[#c17d60] rounded-full flex items-center justify-center">
             <Leaf className="text-white w-6 h-6" />
           </div>
-          <span className="text-2xl font-serif font-medium text-[#4a3f35]">Alma Psychology</span>
+          <span className="text-2xl font-serif font-medium text-[#4a3f35]">Alma Psicologia</span>
         </Link>
         <Button asChild variant="ghost" className="text-[#7a6f64] hover:text-[#c17d60]">
           <Link to="/"><ArrowLeft className="w-4 h-4 mr-2" /> Volver al inicio</Link>
